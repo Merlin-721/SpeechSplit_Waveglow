@@ -4,8 +4,7 @@ import numpy as np
 import pickle
 
 from SpeechSplit.make_spect_f0 import get_f0
-from SpeechSplit.utils import pad_seq_to_2
-from SpeechSplit.utils import quantize_f0_numpy, butter_highpass, speaker_normalization
+from SpeechSplit.utils import *
 from SpeechSplit.model import Generator_3 as Generator
 from SpeechSplit.model import Generator_6 as F0_Converter
 from Waveglow.mel2samp import load_wav_to_torch, Mel2Samp
@@ -34,7 +33,7 @@ class SpeechSplitInferencer(object):
 		P.load_state_dict(p_checkpoint['model'])
 		return G, P
 
-	def read_audio(self,src_path, trg_path):
+	def read_audio(self, src_path, trg_path):
 		trg_spkr = trg_path.split('/')[-1].split('_')[0]
 		if self.spk2gen[trg_spkr] == 'M':
 			lo, hi = 50, 250
@@ -52,11 +51,23 @@ class SpeechSplitInferencer(object):
 			src_audio = torch.tensor(np.concatenate((src_audio, np.array([1e-06])), axis=0), dtype=torch.float32)
 
 		# get src mel
-		mel = self.MelProcessor.get_mel(src_audio).T.numpy()
+		src_mel = self.MelProcessor.get_mel(src_audio).T.numpy()
 
 		# get trg f0
 		y = signal.filtfilt(self.b, self.a, trg_audio)
 		wav = y * 0.96 + np.random.rand(y.shape[0])*1e-06
-		_, f0_norm = get_f0(wav, lo, hi, trg_sr)
+		_, trg_f0_norm = get_f0(wav, lo, hi, trg_sr)
 
-		return mel, f0_norm
+		return src_mel, trg_f0_norm
+
+	def prep_data(self, src_mel, trg_f0_norm):
+		max_len = self.config.max_len_pad
+		src_utt_pad, _ = pad_seq_to_2(src_mel[np.newaxis,:,:], max_len)
+		src_utt_pad = torch.from_numpy(src_utt_pad).to(self.device)
+
+		trg_f0_pad = pad_f0(trg_f0_norm, max_len)
+		trg_f0_quant = quantize_f0_numpy(trg_f0_norm)[0]
+		trg_f0_onehot = trg_f0_quant[np.newaxis,:,:]
+		trg_f0_onehot = torch.from_numpy(trg_f0_onehot).to(self.device)
+		
+		return src_utt_pad, trg_f0_onehot
