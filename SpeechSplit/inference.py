@@ -4,6 +4,7 @@ import numpy as np
 import pickle
 
 from SpeechSplit.make_spect_f0 import get_f0
+from SpeechSplit.audioRead import get_id
 from SpeechSplit.utils import *
 from SpeechSplit.model import Generator_3 as Generator
 from SpeechSplit.model import Generator_6 as F0_Converter
@@ -34,14 +35,14 @@ class SpeechSplitInferencer(object):
 		return G, P
 
 	def read_audio(self, src_path, trg_path):
-		trg_spkr = trg_path.split('/')[-1].split('_')[0]
-		if self.spk2gen[trg_spkr] == 'M':
+		self.trg_spkr = trg_path.split('/')[-1].split('_')[0]
+		if self.spk2gen[self.trg_spkr] == 'M':
 			lo, hi = 50, 250
-		elif self.spk2gen[trg_spkr] == 'F':
+		elif self.spk2gen[self.trg_spkr] == 'F':
 			lo, hi = 100, 600
 		else:
 			raise ValueError("Speaker not in dataset")
-		print(f"Found target speaker {trg_spkr}, loading features...")
+		print(f"Found target speaker {self.trg_spkr}, loading features...")
 
 		src_audio, src_sr = load_wav_to_torch(src_path)
 		trg_audio, trg_sr = load_wav_to_torch(trg_path)
@@ -60,14 +61,36 @@ class SpeechSplitInferencer(object):
 
 		return src_mel, trg_f0_norm
 
-	def prep_data(self, src_mel, trg_f0_norm):
-		max_len = self.config.max_len_pad
-		src_utt_pad, _ = pad_seq_to_2(src_mel[np.newaxis,:,:], max_len)
-		src_utt_pad = torch.from_numpy(src_utt_pad).to(self.device)
+	def pad_utt(self, utterance, max_len):
+		utt_pad, _ = pad_seq_to_2(utterance[np.newaxis,:,:], max_len=192)
+		utt_pad = torch.from_numpy(utt_pad).to(self.device)
+		return utt_pad
 
-		trg_f0_pad = pad_f0(trg_f0_norm, max_len)
-		trg_f0_quant = quantize_f0_numpy(trg_f0_norm)[0]
+	def prep_data(self, src_mel, trg_mel, trg_f0_norm):
+		max_len = self.config.max_len_pad
+		src_utt_pad = self.pad_utt(src_mel, max_len)
+		trg_utt_pad = self.pad_utt(trg_mel, max_len)
+
+		trg_f0_pad = pad_f0(trg_f0_norm.squeeze(), max_len)
+		trg_f0_quant = quantize_f0_numpy(trg_f0_pad)[0]
 		trg_f0_onehot = trg_f0_quant[np.newaxis,:,:]
 		trg_f0_onehot = torch.from_numpy(trg_f0_onehot).to(self.device)
 		
-		return src_utt_pad, trg_f0_onehot
+		return src_utt_pad, trg_utt_pad, trg_f0_onehot
+
+	def forward(self, src_utt, trg_utt, trg_f0):
+		# src utt is padded
+		# trg f0 is onehot
+		emb = get_id(self.trg_spkr, self.spk2gen)
+		# P forward
+		with torch.no_grad():
+			f0_pred = self.P(src_utt, trg_f0)[0]
+			f0_pred_quantized = f0_pred.argmax(dim=-1).squeeze(0)
+			f0_con_onehot = torch.zeros((1, self.config.max_len_pad, 257), device=self.device)
+			f0_con_onehot[0, torch.arange(self.config.max_len_pad), f0_pred_quantized] = 1
+		uttr_f0_trg = torch.cat((src_utt, f0_con_onehot), dim=-1)    
+
+		with torch.no_grad():
+			utt_pred = self.G(uttr_f0_trg, trg_utt, emb)
+			utt_pred = utt_pred[0,:uttr_f0_trg.shape[0],:].cpu().numpy()
+		return utt_pred
