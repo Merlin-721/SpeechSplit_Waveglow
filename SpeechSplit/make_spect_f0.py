@@ -64,9 +64,9 @@ def make_train_data(rootDir, targetDir_f0, targetDir, waveglow_config):
             # extract f0
             y = signal.filtfilt(b, a, audio)
             wav = y * 0.96 + (prng.rand(y.shape[0])-0.5)*1e-06
-            f0_rapt, f0_norm = get_f0(wav, lo, hi, fs)
+            _, f0_norm = get_f0(wav, lo, hi, fs)
             
-            assert len(melspectrogram) == len(f0_rapt)
+            assert len(melspectrogram) == len(f0_norm)
             print(f"Saving {fileName}")
             np.save(os.path.join(targetDir, subdir, fileName[:-4]),
                     melspectrogram.astype(np.float32), allow_pickle=False)    
