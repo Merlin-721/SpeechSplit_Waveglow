@@ -34,6 +34,13 @@ class SpeechSplitInferencer(object):
 		P.load_state_dict(p_checkpoint['model'])
 		return G, P
 
+	def gen_mel(self, path):
+		audio, sr = load_wav_to_torch(path)
+		if audio.shape[0] % self.config.hop_size == 0:
+			audio = torch.tensor(np.concatenate((audio, np.array([1e-06])), axis=0), dtype=torch.float32)
+		mel = self.MelProcessor.get_mel(audio).T.numpy()
+		return audio, mel, sr
+
 	def read_audio(self, src_path, trg_path):
 		self.trg_spkr = trg_path.split('/')[-1].split('_')[0]
 		if self.spk2gen[self.trg_spkr] == 'M':
@@ -44,25 +51,21 @@ class SpeechSplitInferencer(object):
 			raise ValueError("Speaker not in dataset")
 		print(f"Found target speaker {self.trg_spkr}, loading features...")
 
-		src_audio, src_sr = load_wav_to_torch(src_path)
-		trg_audio, trg_sr = load_wav_to_torch(trg_path)
+		# get src and trg mels
+		_        , src_mel, src_sr = self.gen_mel(src_path)
+		trg_audio, trg_mel, trg_sr = self.gen_mel(src_path)
 		assert src_sr == trg_sr
-
-		if src_audio.shape[0] % self.config.hop_size == 0:
-			src_audio = torch.tensor(np.concatenate((src_audio, np.array([1e-06])), axis=0), dtype=torch.float32)
-
-		# get src mel
-		src_mel = self.MelProcessor.get_mel(src_audio).T.numpy()
 
 		# get trg f0
 		y = signal.filtfilt(self.b, self.a, trg_audio)
 		wav = y * 0.96 + np.random.rand(y.shape[0])*1e-06
 		_, trg_f0_norm = get_f0(wav, lo, hi, trg_sr)
 
-		return src_mel, trg_f0_norm
+		return src_mel, trg_mel, trg_f0_norm
 
-	def pad_utt(self, utterance, max_len):
-		utt_pad, _ = pad_seq_to_2(utterance[np.newaxis,:,:], max_len=192)
+
+	def pad_utt(self, utterance, max_len=192):
+		utt_pad, _ = pad_seq_to_2(utterance[np.newaxis,:,:], max_len)
 		utt_pad = torch.from_numpy(utt_pad).to(self.device)
 		return utt_pad
 
@@ -89,7 +92,7 @@ class SpeechSplitInferencer(object):
 			f0_con_onehot = torch.zeros((1, self.config.max_len_pad, 257), device=self.device)
 			f0_con_onehot[0, torch.arange(self.config.max_len_pad), f0_pred_quantized] = 1
 		uttr_f0_trg = torch.cat((src_utt, f0_con_onehot), dim=-1)    
-
+		# G forward
 		with torch.no_grad():
 			utt_pred = self.G(uttr_f0_trg, trg_utt, emb)
 			utt_pred = utt_pred[0,:uttr_f0_trg.shape[0],:].cpu().numpy()
