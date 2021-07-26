@@ -1,0 +1,15 @@
+*vscode
+*__pycache__*
+*.pyc
+*.wav
+/results
+processed_assets/
+assets/
+spectrograms.pkl
+/assets/wavs/
+input_wavs/
+output_mels/
+logs/
+models/
+processed_assets/
+run/

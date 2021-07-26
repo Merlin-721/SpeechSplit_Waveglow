@@ -1,0 +1,8 @@
+Read audio from file
+extract features
+    f0
+    spectrogram
+convert to input format 
+    [pID, [speaker embed], [mel, f0, len, uid]]
+
+save?
