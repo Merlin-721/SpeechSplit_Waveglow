@@ -14,12 +14,11 @@ from Waveglow.mel2samp import load_wav_to_torch, Mel2Samp
 class SpeechSplitInferencer(object):
 	def __init__(self, config, waveglow_config):
 		self.config = config
-		self.waveglow_config = waveglow_config
 		self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 		self.G, self.P = self.load_models()
 		self.MelProcessor = Mel2Samp(**waveglow_config)
 
-		self.spk2gen = pickle.load(open('assets/spk2gen.pkl', "rb"))
+		self.spk2gen = pickle.load(open('SpeechSplit/assets/spk2gen.pkl', "rb"))
 		self.b, self.a = butter_highpass(30, config.sample_rate, order=5)
 		
 	def load_models(self):
@@ -74,7 +73,13 @@ class SpeechSplitInferencer(object):
 		src_utt_pad = self.pad_utt(src_mel, max_len)
 		trg_utt_pad = self.pad_utt(trg_mel, max_len)
 
-		trg_f0_pad = pad_f0(trg_f0_norm.squeeze(), max_len)
+		trg_f0_pad,_ = pad_f0(trg_f0_norm.squeeze(), max_len)
+		
+		# #torch
+		# torch_trg_f0_quant = quantize_f0_torch(torch.from_numpy(trg_f0_pad))[0]
+		# torch_trg_f0_onehot = torch_trg_f0_quant[np.newaxis,:,:].to(self.device)
+
+		# numpy
 		trg_f0_quant = quantize_f0_numpy(trg_f0_pad)[0]
 		trg_f0_onehot = trg_f0_quant[np.newaxis,:,:]
 		trg_f0_onehot = torch.from_numpy(trg_f0_onehot).to(self.device)
@@ -85,6 +90,7 @@ class SpeechSplitInferencer(object):
 		# src utt is padded
 		# trg f0 is onehot
 		emb = get_id(self.trg_spkr, self.spk2gen)
+		emb = torch.tensor(emb).unsqueeze(0).to(self.device)
 		# P forward
 		with torch.no_grad():
 			f0_pred = self.P(src_utt, trg_f0)[0]
@@ -95,5 +101,5 @@ class SpeechSplitInferencer(object):
 		# G forward
 		with torch.no_grad():
 			utt_pred = self.G(uttr_f0_trg, trg_utt, emb)
-			utt_pred = utt_pred[0,:uttr_f0_trg.shape[0],:].cpu().numpy()
+			utt_pred = utt_pred[0,:uttr_f0_trg.shape[1],:].cpu().numpy()
 		return utt_pred
