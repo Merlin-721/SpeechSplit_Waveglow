@@ -53,7 +53,7 @@ hparams = tfcompat.hparam.HParams(
     batch_size = 64,
     mode = 'train',
     shuffle = True,
-    num_workers = 8,
+    num_workers = 1,
     samplier = 8,
 
     # Convenient model builder
