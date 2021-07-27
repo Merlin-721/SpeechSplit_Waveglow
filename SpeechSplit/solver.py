@@ -156,138 +156,139 @@ class Solver(object):
         start_time = time.time()
 
         data_iter = iter(data_loader)
-        for i in range(start_iters, self.num_iters):
+        i = start_iters
+        for it in range(start_iters, self.num_iters):
+            for data in data_iter:
+                i += 1    
+                # Logging.
+                loss = {}
+                # =================================================================================== #
+                #                               2. Generator Training                                 #
+                # =================================================================================== #
 
-            # Logging.
-            loss = {}
-            # =================================================================================== #
-            #                               2. Generator Training                                 #
-            # =================================================================================== #
+                x_real_org, emb_org, f0_org, len_org = self.data_to_device(data)
 
-            x_real_org, emb_org, f0_org, len_org = next(data_iter)
-            x_real_org, emb_org, len_org, f0_org = self.data_to_device([x_real_org, emb_org, len_org, f0_org])
-
-            if self.train_G:
-
-                self.G = self.G.train()
-                            
-                # G Identity mapping loss
-                # combines spect and f0s
-                x_f0 = torch.cat((x_real_org, f0_org), dim=-1)
-                # interpolates combined spect and f0s
-                x_f0_intrp = self.Interp(x_f0, len_org) 
-
-                # strips f0 from interpolated to quantize it
-                f0_org_intrp = quantize_f0_torch(x_f0_intrp[:,:,-1])[0]
-                # combines quantized f0 back with spect
-                x_f0_intrp_org = torch.cat((x_f0_intrp[:,:,:-1], f0_org_intrp), dim=-1)
-
-                # G forward
-                x_pred = self.G(x_f0_intrp_org, x_real_org, emb_org)
-                g_loss_id = F.mse_loss(x_pred, x_real_org, reduction='mean') 
-
-                # Backward and optimize.
-                self.g_optimizer.zero_grad()
-                g_loss_id.backward()
-                self.g_optimizer.step()
-
-                loss['G/loss_id'] = g_loss_id.item()
-
-            # =================================================================================== #
-            #                               3. F0_Converter Training                              #
-            # =================================================================================== #
-            if self.train_P:
-
-                self.P = self.P.train()
-                # Preprocess f0_trg for P 
-                x_f0_trg = torch.cat((x_real_org, f0_org), dim=-1)
-                x_f0_intrp_trg = self.Interp(x_f0_trg, len_org) 
-                # Target for P
-                f0_trg_intrp = quantize_f0_torch(x_f0_intrp_trg[:,:,-1])[0]
-                f0_trg_intrp_indx = f0_trg_intrp.transpose(1,2).argmax(2)
-
-                # P forward
-                f0_pred = self.P(x_real_org,f0_trg_intrp)
-                p_loss_id = F.cross_entropy(f0_pred,f0_trg_intrp_indx, reduction='mean')
-
-
-                self.p_optimizer.zero_grad()
-                p_loss_id.backward()
-                self.p_optimizer.step()
-                loss['P/loss_id'] = p_loss_id.item()
-            # =================================================================================== #
-            #                                 4. Miscellaneous                                    #
-            # =================================================================================== #
-
-            # Print out training information.
-            lossString = '; '.join([f'{k} {round(v,8)}' for k, v in loss.items()])
-            print( f'Iteration [{i+1}/{self.num_iters}]' + lossString, end='\r')
-
-            if (i+1) % self.log_step == 0:
-                et = time.time() - start_time
-                et_str = str(datetime.timedelta(seconds=et))[:-7]
-                seconds = (et / (i+1)) * (self.num_iters - i) 
-                mins = seconds / 60
-                hrs = mins / 60
-                print()
-                print(f'Time elapsed: {et_str}; Time remaining:{round(hrs/24,2)} days, {round(hrs,2)} hrs or {round(mins,1)} mins')
-                for tag, value in loss.items():
-                    self.writer.add_scalar(tag, value, i+1)
-                        
-                        
-            # Save model checkpoints.
-            if (i+1) % self.model_save_step == 0:
-                print()
                 if self.train_G:
-                    G_path = os.path.join(self.G_save_dir, '{}-G.ckpt'.format(i+1))
-                    torch.save({'model': self.G.state_dict(),
-                                'optimizer': self.g_optimizer.state_dict()}, G_path)
-                    print(f"Saved G checkpoint to:\n{self.G_save_dir}")
 
+                    self.G = self.G.train()
+                                
+                    # G Identity mapping loss
+                    # combines spect and f0s
+                    x_f0 = torch.cat((x_real_org, f0_org), dim=-1)
+                    # interpolates combined spect and f0s
+                    x_f0_intrp = self.Interp(x_f0, len_org) 
+
+                    # strips f0 from interpolated to quantize it
+                    f0_org_intrp = quantize_f0_torch(x_f0_intrp[:,:,-1])[0]
+                    # combines quantized f0 back with spect
+                    x_f0_intrp_org = torch.cat((x_f0_intrp[:,:,:-1], f0_org_intrp), dim=-1)
+
+                    # G forward
+                    x_pred = self.G(x_f0_intrp_org, x_real_org, emb_org)
+                    g_loss_id = F.mse_loss(x_pred, x_real_org, reduction='mean') 
+
+                    # Backward and optimize.
+                    self.g_optimizer.zero_grad()
+                    g_loss_id.backward()
+                    self.g_optimizer.step()
+
+                    loss['G/loss_id'] = g_loss_id.item()
+
+                # =================================================================================== #
+                #                               3. F0_Converter Training                              #
+                # =================================================================================== #
                 if self.train_P:
-                    P_path = os.path.join(self.P_save_dir, '{}-P.ckpt'.format(i+1))
-                    torch.save({'model': self.P.state_dict(),
-                                'optimizer': self.p_optimizer.state_dict()}, P_path)
-                    print(f"Saved P checkpoint to:\n{self.P_save_dir}")
+
+                    self.P = self.P.train()
+                    # Preprocess f0_trg for P 
+                    x_f0_trg = torch.cat((x_real_org, f0_org), dim=-1)
+                    x_f0_intrp_trg = self.Interp(x_f0_trg, len_org) 
+                    # Target for P
+                    f0_trg_intrp = quantize_f0_torch(x_f0_intrp_trg[:,:,-1])[0]
+                    f0_trg_intrp_indx = f0_trg_intrp.transpose(1,2).argmax(2)
+
+                    # P forward
+                    f0_pred = self.P(x_real_org,f0_trg_intrp)
+                    p_loss_id = F.cross_entropy(f0_pred,f0_trg_intrp_indx, reduction='mean')
 
 
-            # Validation.
-            if (i+1) % self.sample_step == 0:
-                self.G = self.G.eval() if self.train_G else None
-                self.P = self.P.eval() if self.train_P else None
-                with torch.no_grad():
-                    G_loss_values, P_loss_values = [], []
-                    # test over n speakers
-                    random.shuffle(self.val_set)
-                    for speaker in self.val_set[:2]:
-                        emb = speaker[0].unsqueeze(0).to(self.device)
-                        utts, f0s = speaker[1], speaker[2]
-                        for utt, f0 in zip(utts, f0s):
-                            x_real_pad, _ = pad_seq_to_2(utt[np.newaxis,:,:], 192)
-                            f0_org,_ = pad_f0(f0.squeeze(),192)
-                            f0_quantized = quantize_f0_numpy(f0_org)[0]
-                            f0_onehot = f0_quantized[np.newaxis, :, :]
-                            f0_org_val = torch.from_numpy(f0_onehot).to(self.device) 
-                            x_real_pad = torch.from_numpy(x_real_pad).to(self.device) 
-                            x_f0 = torch.cat((x_real_pad, f0_org_val), dim=-1)
-                            if self.train_G:
-                                x_identic_val = self.G(x_f0, x_real_pad, emb)
-                                g_loss_val = F.mse_loss(x_real_pad, x_identic_val, reduction='mean')
-                                G_loss_values.append(g_loss_val.item())
+                    self.p_optimizer.zero_grad()
+                    p_loss_id.backward()
+                    self.p_optimizer.step()
+                    loss['P/loss_id'] = p_loss_id.item()
+                # =================================================================================== #
+                #                                 4. Miscellaneous                                    #
+                # =================================================================================== #
+
+                # Print out training information.
+                lossString = '; '.join([f'{k} {round(v,8)}' for k, v in loss.items()])
+                print( f'Iteration [{i+1}/{self.num_iters}]' + lossString, end='\r')
+
+                if (i+1) % self.log_step == 0:
+                    et = time.time() - start_time
+                    et_str = str(datetime.timedelta(seconds=et))[:-7]
+                    seconds = (et / (i+1)) * (self.num_iters - i) 
+                    mins = seconds / 60
+                    hrs = mins / 60
+                    print()
+                    print(f'Time elapsed: {et_str}; Time remaining:{round(hrs/24,2)} days, {round(hrs,2)} hrs or {round(mins,1)} mins')
+                    for tag, value in loss.items():
+                        self.writer.add_scalar(tag, value, i+1)
                             
-                            if self.train_P:
-                                f0_pred = self.P(x_real_pad,f0_org_val)
-                                f0_trg_intrp_indx = f0_org_val.transpose(1,2).argmax(2)
-                                p_loss_id = F.cross_entropy(f0_pred,f0_trg_intrp_indx, reduction='mean')
-                                P_loss_values.append(p_loss_id.item())
+                            
+                # Save model checkpoints.
+                if (i+1) % self.model_save_step == 0:
+                    print()
+                    if self.train_G:
+                        G_path = os.path.join(self.G_save_dir, '{}-G.ckpt'.format(i+1))
+                        torch.save({'model': self.G.state_dict(),
+                                    'optimizer': self.g_optimizer.state_dict()}, G_path)
+                        print(f"Saved G checkpoint to:\n{self.G_save_dir}")
 
-                G_val_loss = np.nanmean(G_loss_values) 
-                print(f'G Validation loss: {round(G_val_loss,3)}')
-                P_val_loss = np.nanmean(P_loss_values) 
-                print(f'P Validation loss: {round(P_val_loss,3)}')
-                if self.use_tensorboard:
-                    self.writer.add_scalar('G Validation_loss', G_val_loss, i+1)
-                    self.writer.add_scalar('P Validation_loss', P_val_loss, i+1)
+                    if self.train_P:
+                        P_path = os.path.join(self.P_save_dir, '{}-P.ckpt'.format(i+1))
+                        torch.save({'model': self.P.state_dict(),
+                                    'optimizer': self.p_optimizer.state_dict()}, P_path)
+                        print(f"Saved P checkpoint to:\n{self.P_save_dir}")
+
+
+                # Validation.
+                if (i+1) % self.sample_step == 0:
+                    self.G = self.G.eval() if self.train_G else None
+                    self.P = self.P.eval() if self.train_P else None
+                    with torch.no_grad():
+                        G_loss_values, P_loss_values = [], []
+                        # test over n speakers
+                        random.shuffle(self.val_set)
+                        for speaker in self.val_set[:2]:
+                            emb = speaker[0].unsqueeze(0).to(self.device)
+                            utts, f0s = speaker[1], speaker[2]
+                            for utt, f0 in zip(utts, f0s):
+                                x_real_pad, _ = pad_seq_to_2(utt[np.newaxis,:,:], 192)
+                                f0_org,_ = pad_f0(f0.squeeze(),192)
+                                f0_quantized = quantize_f0_numpy(f0_org)[0]
+                                f0_onehot = f0_quantized[np.newaxis, :, :]
+                                f0_org_val = torch.from_numpy(f0_onehot).to(self.device) 
+                                x_real_pad = torch.from_numpy(x_real_pad).to(self.device) 
+                                x_f0 = torch.cat((x_real_pad, f0_org_val), dim=-1)
+                                if self.train_G:
+                                    x_identic_val = self.G(x_f0, x_real_pad, emb)
+                                    g_loss_val = F.mse_loss(x_real_pad, x_identic_val, reduction='mean')
+                                    G_loss_values.append(g_loss_val.item())
+                                
+                                if self.train_P:
+                                    f0_pred = self.P(x_real_pad,f0_org_val)
+                                    f0_trg_intrp_indx = f0_org_val.transpose(1,2).argmax(2)
+                                    p_loss_id = F.cross_entropy(f0_pred,f0_trg_intrp_indx, reduction='mean')
+                                    P_loss_values.append(p_loss_id.item())
+
+                    G_val_loss = np.nanmean(G_loss_values) 
+                    print(f'G Validation loss: {round(G_val_loss,3)}')
+                    P_val_loss = np.nanmean(P_loss_values) 
+                    print(f'P Validation loss: {round(P_val_loss,3)}')
+                    if self.use_tensorboard:
+                        self.writer.add_scalar('G Validation_loss', G_val_loss, i+1)
+                        self.writer.add_scalar('P Validation_loss', P_val_loss, i+1)
 
 
             # plot test samples
