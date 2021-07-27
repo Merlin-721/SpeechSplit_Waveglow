@@ -1,0 +1,56 @@
+{
+	"freq" : 8,
+    "dim_neck" : 8,
+    "freq_2" : 8,
+    "dim_neck_2" : 1,
+    "freq_3" : 8,
+    "dim_neck_3" : 32,
+    "out_channels" : 30,
+    "layers" : 24,
+    "stacks" : 4,
+    "residual_channels" : 512,
+    "gate_channels" : 512,
+    "skip_out_channels" : 256,
+    "cin_channels" : 80,
+    "gin_channels" : -1,  
+    "weight_normalization" : true,
+    "n_speakers" : -1,
+    "dropout" : 0.05,
+    "kernel_size" : 3,
+    "upsample_conditional_features" : true,
+    "upsample_scales" : [4, 4, 4, 4],
+    "freq_axis_kernel_size" : 3,
+    "legacy" : true,
+    
+    "dim_enc" : 512,
+    "dim_enc_2" : 128,
+    "dim_enc_3" : 256,
+    
+    "dim_freq" : 80,
+    "dim_spk_emb" : 82,
+    "dim_f0" : 257,
+    "dim_dec" : 512,
+    "len_raw" : 128,
+    "chs_grp" : 16,
+    
+    "min_len_seg" : 19,
+    "max_len_seg" : 32,
+    "min_len_seq" : 64,
+    "max_len_seq" : 128,
+    "max_len_pad" : 488,
+    
+    "root_dir" : "assets/spmel",
+    "feat_dir" : "assets/raptf0",
+    "batch_size" : 64,
+    "mode" : "train",
+    "shuffle" : true,
+    "num_workers" : 8,
+    "samplier" : 8,
+
+    "builder" : "wavenet",
+
+    "hop_size" : 256,
+    "sample_rate" : 22050,
+    "log_scale_min" : -32.23619130191664
+
+}
