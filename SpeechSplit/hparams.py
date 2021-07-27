@@ -1,10 +1,10 @@
-from .tfcompat.hparam import HParams
+import tfcompat.hparam 
 
 # NOTE: If you want full control for model architecture. please take a look
 # at the code and change whatever you want. Some hyper parameters are hardcoded.
 
 # Default hyperparameters:
-hparams = HParams(
+hparams = tfcompat.hparam.HParams(
     # model   
     freq = 8,
     dim_neck = 8,
