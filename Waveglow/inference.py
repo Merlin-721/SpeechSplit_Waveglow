@@ -35,7 +35,7 @@ class WaveglowInferencer(object):
     def __init__(self, args):
         self.args = args
 
-        self.waveglow = torch.load(args.waveglow_path)['model']
+        self.waveglow = torch.load(args.waveglow_model)['model']
         self.waveglow = self.waveglow.remove_weightnorm(self.waveglow)
         self.waveglow.cuda().eval()
 
@@ -65,9 +65,7 @@ class WaveglowInferencer(object):
 
             audio = audio.squeeze(0).cpu().numpy()
             audio = audio.astype("int16")
-            audio_path = os.path.join(self.args.output, 
-                        "{}.wav".format(filename))
-
+            audio_path = f"{self.args.output_dir}/{filename}.wav"
             print(f"Writing audio to {audio_path}")
             write(audio_path, self.args.sample_rate, audio)
 
