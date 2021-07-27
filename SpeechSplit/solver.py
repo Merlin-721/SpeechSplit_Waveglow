@@ -111,10 +111,6 @@ class Solver(object):
         self.writer = SummaryWriter(self.log_dir)
         
 
-    def reset_grad(self, optimizer):
-        """Reset the gradient buffers."""
-        optimizer.zero_grad()
-      
     def data_to_device(self, args):
         return [x.to(self.device) for x in args]
 
@@ -168,10 +164,10 @@ class Solver(object):
             #                               2. Generator Training                                 #
             # =================================================================================== #
 
-            if self.train_G:
-                x_real_org, emb_org, f0_org, len_org = next(data_iter)
+            x_real_org, emb_org, f0_org, len_org = next(data_iter)
+            x_real_org, emb_org, len_org, f0_org = self.data_to_device([x_real_org, emb_org, len_org, f0_org])
 
-                x_real_org, emb_org, len_org, f0_org = self.data_to_device([x_real_org, emb_org, len_org, f0_org])
+            if self.train_G:
 
                 self.G = self.G.train()
                             
@@ -188,38 +184,34 @@ class Solver(object):
 
                 # G forward
                 x_pred = self.G(x_f0_intrp_org, x_real_org, emb_org)
-                g_loss_id = F.mse_loss(x_real_org, x_pred, reduction='mean') 
+                g_loss_id = F.mse_loss(x_pred, x_real_org, reduction='mean') 
 
                 # Backward and optimize.
-                self.reset_grad(self.g_optimizer)
+                self.g_optimizer.zero_grad()
                 g_loss_id.backward()
                 self.g_optimizer.step()
 
                 loss['G/loss_id'] = g_loss_id.item()
 
-            
             # =================================================================================== #
             #                               3. F0_Converter Training                              #
             # =================================================================================== #
             if self.train_P:
-                x_real_trg, emb_trg, f0_trg, len_trg = next(data_iter)
-
-                x_real_trg, emb_trg, len_trg, f0_trg = self.data_to_device([x_real_trg, emb_trg, len_trg, f0_trg])
 
                 self.P = self.P.train()
                 # Preprocess f0_trg for P 
-                x_f0_trg = torch.cat((x_real_trg, f0_trg), dim=-1)
-                x_f0_intrp_trg = self.Interp(x_f0_trg, len_trg) 
+                x_f0_trg = torch.cat((x_real_org, f0_org), dim=-1)
+                x_f0_intrp_trg = self.Interp(x_f0_trg, len_org) 
                 # Target for P
                 f0_trg_intrp = quantize_f0_torch(x_f0_intrp_trg[:,:,-1])[0]
+                f0_trg_intrp_indx = f0_trg_intrp.transpose(1,2).argmax(2)
 
                 # P forward
                 f0_pred = self.P(x_real_org,f0_trg_intrp)
-                f0_trg_intrp_indx = f0_trg_intrp.transpose(1,2).argmax(2)
                 p_loss_id = F.cross_entropy(f0_pred,f0_trg_intrp_indx, reduction='mean')
 
 
-                self.reset_grad(self.p_optimizer)
+                self.p_optimizer.zero_grad()
                 p_loss_id.backward()
                 self.p_optimizer.step()
                 loss['P/loss_id'] = p_loss_id.item()
@@ -280,7 +272,7 @@ class Solver(object):
                             x_f0 = torch.cat((x_real_pad, f0_org_val), dim=-1)
                             if self.train_G:
                                 x_identic_val = self.G(x_f0, x_real_pad, emb)
-                                g_loss_val = F.mse_loss(x_real_pad, x_identic_val, reduction='sum')
+                                g_loss_val = F.mse_loss(x_real_pad, x_identic_val, reduction='mean')
                                 G_loss_values.append(g_loss_val.item())
                             
                             if self.train_P:
