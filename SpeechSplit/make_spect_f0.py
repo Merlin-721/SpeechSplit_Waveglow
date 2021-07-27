@@ -6,9 +6,9 @@ import torch
 from scipy import signal
 from numpy.random import RandomState
 from pysptk import sptk
-from utils import butter_highpass, speaker_normalization
-from hparams import hparams
-from audioRead import MAX_WAV_VALUE
+from .utils import butter_highpass, speaker_normalization
+from .hparams import hparams
+from .audioRead import MAX_WAV_VALUE
 from Waveglow.mel2samp import load_wav_to_torch, Mel2Samp
 
 SAMPLE_RATE = hparams.sample_rate
