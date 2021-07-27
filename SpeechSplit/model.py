@@ -4,7 +4,6 @@ import torch.nn.functional as F
 import numpy as np
 
 from math import ceil 
-from .utils import get_mask_from_lengths
 
 
 class LinearNorm(torch.nn.Module):
