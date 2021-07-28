@@ -15,7 +15,7 @@ from utils import pad_seq_to_2, pad_f0, quantize_f0_torch, quantize_f0_numpy
 
 # use demo data for simplicity
 # make your own validation set as needed
-validation_pt = pickle.load(open('assets/spmel/demo.pkl', "rb"))
+# validation_pt = pickle.load(open('assets/spmel/demo.pkl', "rb"))
 
 class Solver(object):
     """Solver for training"""
@@ -103,6 +103,11 @@ class Solver(object):
         self.G.load_state_dict(g_checkpoint['model'])
         self.g_optimizer.load_state_dict(g_checkpoint['optimizer'])
         self.g_lr = self.g_optimizer.param_groups[0]['lr']
+        P_path = os.path.join(self.P_save_dir, '{}-G.ckpt'.format(resume_iters))
+        p_checkpoint = torch.load(P_path, map_location=lambda storage, loc: storage)
+        self.P.load_state_dict(p_checkpoint['model'])
+        self.p_optimizer.load_state_dict(p_checkpoint['optimizer'])
+        self.p_lr = self.p_optimizer.param_groups[0]['lr']
         
         
     def build_tensorboard(self):
@@ -144,6 +149,7 @@ class Solver(object):
             self.num_iters += self.resume_iters
             self.restore_model(self.resume_iters)
             self.print_optimizer(self.g_optimizer, 'G_optimizer')
+            self.print_optimizer(self.p_optimizer, 'P_optimizer')
                         
         # Learning rate cache for decaying.
         g_lr = self.g_lr
@@ -204,11 +210,11 @@ class Solver(object):
                 x_f0_intrp_trg = self.Interp(x_f0_trg, len_org) 
                 # Target for P
                 f0_trg_intrp = quantize_f0_torch(x_f0_intrp_trg[:,:,-1])[0]
-                f0_trg_intrp_indx = f0_trg_intrp.transpose(1,2).argmax(2)
+                f0_trg_intrp_indx = f0_trg_intrp.argmax(2)
 
                 # P forward
                 f0_pred = self.P(x_real_org,f0_trg_intrp)
-                p_loss_id = F.cross_entropy(f0_pred,f0_trg_intrp_indx, reduction='mean')
+                p_loss_id = F.cross_entropy(f0_pred.transpose(1,2),f0_trg_intrp_indx, reduction='mean')
 
 
                 self.p_optimizer.zero_grad()
@@ -236,7 +242,7 @@ class Solver(object):
                         
                         
             # Save model checkpoints.
-            if (i+1) % self.model_save_step == 0:
+            if (i+1) % self.model_save_step == 0 and i >= int(self.num_iters*0.25):
                 print()
                 if self.train_G:
                     G_path = os.path.join(self.G_save_dir, '{}-G.ckpt'.format(i+1))
@@ -272,13 +278,13 @@ class Solver(object):
                             x_f0 = torch.cat((x_real_pad, f0_org_val), dim=-1)
                             if self.train_G:
                                 x_identic_val = self.G(x_f0, x_real_pad, emb)
-                                g_loss_val = F.mse_loss(x_real_pad, x_identic_val, reduction='mean')
+                                g_loss_val = F.mse_loss(x_identic_val,x_real_pad, reduction='mean')
                                 G_loss_values.append(g_loss_val.item())
                             
                             if self.train_P:
                                 f0_pred = self.P(x_real_pad,f0_org_val)
-                                f0_trg_intrp_indx = f0_org_val.transpose(1,2).argmax(2)
-                                p_loss_id = F.cross_entropy(f0_pred,f0_trg_intrp_indx, reduction='mean')
+                                f0_trg_intrp_indx = f0_org_val.argmax(2)
+                                p_loss_id = F.cross_entropy(f0_pred.transpose(1,2),f0_trg_intrp_indx, reduction='mean')
                                 P_loss_values.append(p_loss_id.item())
 
                 G_val_loss = np.nanmean(G_loss_values) 
