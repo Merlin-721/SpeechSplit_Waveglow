@@ -75,11 +75,7 @@ class SpeechSplitInferencer(object):
 
 		trg_f0_pad,_ = pad_f0(trg_f0_norm.squeeze(), max_len)
 		
-		# #torch
-		# torch_trg_f0_quant = quantize_f0_torch(torch.from_numpy(trg_f0_pad))[0]
-		# torch_trg_f0_onehot = torch_trg_f0_quant[np.newaxis,:,:].to(self.device)
 
-		# numpy
 		trg_f0_quant = quantize_f0_numpy(trg_f0_pad)[0]
 		trg_f0_onehot = trg_f0_quant[np.newaxis,:,:]
 		trg_f0_onehot = torch.from_numpy(trg_f0_onehot).to(self.device)
