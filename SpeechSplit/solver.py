@@ -173,18 +173,15 @@ class Solver(object):
             x_real_org, emb_org, f0_org, len_org = next(data_iter)
             x_real_org, emb_org, len_org, f0_org = self.data_to_device([x_real_org, emb_org, len_org, f0_org])
 
+            # combines spect and f0s
+            x_f0 = torch.cat((x_real_org, f0_org), dim=-1)
+            # Random resampling with linear interpolation
+            x_f0_intrp = self.Interp(x_f0, len_org) 
+            # strips f0 from trimmed to quantize it
+            f0_org_intrp = quantize_f0_torch(x_f0_intrp[:,:,-1])[0]
+
             if self.train_G:
-
                 self.G = self.G.train()
-                            
-                # G Identity mapping loss
-                # combines spect and f0s
-                x_f0 = torch.cat((x_real_org, f0_org), dim=-1)
-                # Trims combined spect and f0s to max len
-                x_f0_intrp = self.Interp(x_f0, len_org) 
-
-                # strips f0 from trimmed to quantize it
-                f0_org_intrp = quantize_f0_torch(x_f0_intrp[:,:,-1])[0]
                 # combines quantized f0 back with spect
                 x_f0_intrp_org = torch.cat((x_f0_intrp[:,:,:-1], f0_org_intrp), dim=-1)
 
@@ -205,15 +202,10 @@ class Solver(object):
             if self.train_P:
 
                 self.P = self.P.train()
-                # Preprocess f0_trg for P 
-                x_f0_trg = torch.cat((x_real_org, f0_org), dim=-1)
-                x_f0_intrp_trg = self.Interp(x_f0_trg, len_org) 
-                # Target for P
-                f0_trg_intrp = quantize_f0_torch(x_f0_intrp_trg[:,:,-1])[0]
-                f0_trg_intrp_indx = f0_trg_intrp.argmax(2)
+                f0_trg_intrp_indx = f0_org_intrp.argmax(2)
 
                 # P forward
-                f0_pred = self.P(x_real_org,f0_trg_intrp)
+                f0_pred = self.P(x_real_org,f0_org_intrp)
                 p_loss_id = F.cross_entropy(f0_pred.transpose(1,2),f0_trg_intrp_indx, reduction='mean')
 
 
