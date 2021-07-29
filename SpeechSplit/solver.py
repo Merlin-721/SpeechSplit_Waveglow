@@ -226,8 +226,6 @@ class Solver(object):
             # =================================================================================== #
 
             # Print out training information.
-            lossString = '; '.join([f'{k} {round(v,8)}' for k, v in loss.items()])
-            print( f'Iteration [{i+1}/{self.num_iters}]' + lossString, end='\r')
 
             if (i+1) % self.log_step == 0:
                 et = time.time() - start_time
@@ -235,7 +233,8 @@ class Solver(object):
                 seconds = (et / (i+1)) * (self.num_iters - i) 
                 mins = seconds / 60
                 hrs = mins / 60
-                print()
+                lossString = '; '.join([f'{k} {round(v,8)}' for k, v in loss.items()])
+                print( f'Iteration [{i+1}/{self.num_iters}]' + lossString)
                 print(f'Time elapsed: {et_str}; Time remaining:{round(hrs/24,2)} days, {round(hrs,2)} hrs or {round(mins,1)} mins')
                 for tag, value in loss.items():
                     self.writer.add_scalar(tag, value, i+1)
@@ -265,7 +264,7 @@ class Solver(object):
                     G_loss_values, P_loss_values = [], []
                     # test over n speakers
                     random.shuffle(self.val_set)
-                    for speaker in self.val_set[:2]:
+                    for speaker in self.val_set[:10]:
                         emb = speaker[0].unsqueeze(0).to(self.device)
                         utts, f0s = speaker[1], speaker[2]
                         for utt, f0 in zip(utts, f0s):
