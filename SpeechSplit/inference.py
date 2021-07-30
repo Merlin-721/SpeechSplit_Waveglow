@@ -64,7 +64,7 @@ class SpeechSplitInferencer(object):
 
 
 	def pad_utt(self, utterance, max_len=192):
-		utt_pad, _ = pad_seq_to_2(utterance[np.newaxis,:,:], max_len)
+		utt_pad = pad_seq_to_2(utterance[np.newaxis,:,:], max_len)
 		utt_pad = torch.from_numpy(utt_pad).to(self.device)
 		return utt_pad
 

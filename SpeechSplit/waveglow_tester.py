@@ -45,7 +45,7 @@ def readData(mel, f0):
 	# pad utterence and get length of padding
 	print(mel.shape)
 	uttr_pad = mel[np.newaxis,:192,:]
-	# uttr_pad, len_pad = pad_seq_to_2(mel[np.newaxis,:,:], 192)
+	# uttr_pad = pad_seq_to_2(mel[np.newaxis,:,:], 192)
 	uttr_pad = torch.from_numpy(uttr_pad).to(device)
 	# pad f0 with same amount
 	f0_pad = f0[:192]

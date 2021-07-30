@@ -265,8 +265,8 @@ class Solver(object):
                 k=0
                 for utt, f0 in zip(utts, f0s):
                     k+=1
-                    x_real_pad, _ = pad_seq_to_2(utt[np.newaxis,:,:], 192)
-                    f0_org,_ = pad_f0(f0.squeeze(),192)
+                    x_real_pad = pad_seq_to_2(utt[np.newaxis,:,:], 192)
+                    f0_org = pad_f0(f0,192)
                     f0_quantized = quantize_f0_numpy(f0_org)[0]
                     f0_onehot = f0_quantized[np.newaxis, :, :]
                     f0_org_val = torch.from_numpy(f0_onehot).to(self.device) 
