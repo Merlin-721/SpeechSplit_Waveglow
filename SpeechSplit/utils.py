@@ -84,18 +84,19 @@ def get_mask_from_lengths(lengths, max_len):
     
 
 def pad_seq_to_2(x, len_out=128):
-    len_pad = (len_out - x.shape[1])
-    if len_pad < 0:
-        x = x[:, :len_pad]
-        len_pad = 0
-        assert x.shape[1] == len_out
-    return np.pad(x, ((0,0),(0,len_pad),(0,0)), 'constant'), len_pad    
-
+    length = x.shape[1]
+    if length <= len_out:
+        len_pad = len_out-length
+        return np.pad(x, ((0,0),(0,len_pad),(0,0)), 'constant')
+    else:
+        start = int(np.floor((length-len_out))/2)
+        return x[:, start:start+len_out]
 
 def pad_f0(f0, len_out=128):
-    len_pad = (len_out - f0.shape[0])
-    if len_pad < 0:
-        f0 = f0[:len_pad]
-        len_pad = 0
-        assert f0.shape[0] == len_out
-    return np.pad(f0, (0,len_pad), 'constant', constant_values=(0,0)), len_pad    
+    length = f0.shape[0]
+    if length <= len_out:
+        len_pad = len_out-length
+        return np.pad(f0, (0,len_pad), 'constant', constant_values=(0,0))
+    else:
+        start = int(np.floor((length-len_out))/2)
+        return f0[start:start+len_out]
