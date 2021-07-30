@@ -2,6 +2,8 @@ import torch
 from scipy import signal
 import numpy as np
 import pickle
+import json
+from types import SimpleNamespace
 
 from SpeechSplit.make_spect_f0 import get_f0
 from SpeechSplit.audioRead import get_id
@@ -12,24 +14,25 @@ from Waveglow.mel2samp import load_wav_to_torch, Mel2Samp
 
 
 class SpeechSplitInferencer(object):
-	def __init__(self, config, waveglow_config):
-		self.config = config
+	def __init__(self,args, waveglow_config):
 		self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+		with open(args.speech_split_conf) as f:
+			self.config = json.load(f,object_hook=lambda d: SimpleNamespace(**d))
+		self.G_path = args.ss_g
+		self.P_path = args.ss_p
 		self.G, self.P = self.load_models()
 		self.MelProcessor = Mel2Samp(**waveglow_config)
 
 		self.spk2gen = pickle.load(open('SpeechSplit/assets/spk2gen.pkl', "rb"))
-		self.b, self.a = butter_highpass(30, config.sample_rate, order=5)
+		self.b, self.a = butter_highpass(30, args.sample_rate, order=5)
 		
 	def load_models(self):
 		G = Generator(self.config).eval().to(self.device)
-		# TODO replace with arg
-		g_checkpoint = torch.load('SpeechSplit/run/models/22k_waveglow/G/180000-G.ckpt', map_location=lambda storage, loc: storage)
+		g_checkpoint = torch.load(self.G_path, map_location=lambda storage, loc: storage)
 		G.load_state_dict(g_checkpoint['model'])
 
 		P = F0_Converter(self.config).eval().to(self.device)
-		# TODO replace with arg
-		p_checkpoint = torch.load('SpeechSplit/run/models/22k_waveglow/P/180000-P.ckpt', map_location=lambda storage, loc: storage)
+		p_checkpoint = torch.load(self.P_path, map_location=lambda storage, loc: storage)
 		P.load_state_dict(p_checkpoint['model'])
 		return G, P
 
@@ -73,7 +76,7 @@ class SpeechSplitInferencer(object):
 		src_utt_pad = self.pad_utt(src_mel, max_len)
 		trg_utt_pad = self.pad_utt(trg_mel, max_len)
 
-		trg_f0_pad,_ = pad_f0(trg_f0_norm.squeeze(), max_len)
+		trg_f0_pad = pad_f0(trg_f0_norm.squeeze(), max_len)
 		
 
 		trg_f0_quant = quantize_f0_numpy(trg_f0_pad)[0]
