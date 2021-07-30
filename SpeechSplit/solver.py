@@ -10,6 +10,7 @@ import time
 import datetime
 import pickle
 import random
+import json
 
 from utils import pad_seq_to_2, pad_f0, quantize_f0_torch, quantize_f0_numpy
 
@@ -45,8 +46,7 @@ class Solver(object):
         # Directories.
         self.log_dir = config.log_dir
         self.sample_dir = config.sample_dir
-        self.G_save_dir = config.G_save_dir
-        self.P_save_dir = config.P_save_dir
+        self.save_dir = config.save_dir
 
         # Step size.
         self.log_step = config.log_step
@@ -64,6 +64,8 @@ class Solver(object):
         self.Interp = InterpLnr(self.hparams)
         self.Interp.to(self.device)
 
+        self.dump_hparams()
+
         if self.use_tensorboard:
             self.build_tensorboard()
 
@@ -79,6 +81,9 @@ class Solver(object):
         self.print_network(self.P, 'P')
         self.P.to(self.device)
 
+    def dump_hparams(self):
+        with open(f'{self.save_dir}/hparams.json', 'w') as fp:
+            json.dump(self.hparams.to_json(indent=0), fp)
         
     def print_network(self, model, name):
         """Print out the network information."""
@@ -232,13 +237,13 @@ class Solver(object):
             if (i+1) % self.model_save_step == 0 and i >= int(self.num_iters*0.25):
                 print()
                 if self.train_G:
-                    G_path = os.path.join(self.G_save_dir, '{}-G.ckpt'.format(i+1))
+                    G_path = os.path.join(self.save_dir, 'G/{}-G.ckpt'.format(i+1))
                     torch.save({'model': self.G.state_dict(),
                                 'optimizer': self.g_optimizer.state_dict()}, G_path)
                     print(f"Saved G checkpoint to:\n{self.G_save_dir}")
 
                 if self.train_P:
-                    P_path = os.path.join(self.P_save_dir, '{}-P.ckpt'.format(i+1))
+                    P_path = os.path.join(self.save_dir, 'P/{}-P.ckpt'.format(i+1))
                     torch.save({'model': self.P.state_dict(),
                                 'optimizer': self.p_optimizer.state_dict()}, P_path)
                     print(f"Saved P checkpoint to:\n{self.P_save_dir}")
