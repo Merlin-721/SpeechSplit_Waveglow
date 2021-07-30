@@ -1,7 +1,6 @@
 import os
 import json
 from argparse import ArgumentParser
-from types import SimpleNamespace
 from show_mel import plot_data
 from SpeechSplit.inference import SpeechSplitInferencer
 from Waveglow.inference import WaveglowInferencer
@@ -34,14 +33,12 @@ if __name__ == '__main__':
 	if not os.path.exists(args.output_dir):
 		os.makedirs(args.output_dir)
 
-	with open(args.speech_split_conf) as f:
-		speech_split_conf = json.load(f,object_hook=lambda d: SimpleNamespace(**d))
 	
 	with open(args.waveglow_conf) as f:
 		print(f"Obtaining waveglow config from {args.waveglow_conf}")
 		waveglow_conf = json.load(f)['data_config']
 
-	speechsplit_inf = SpeechSplitInferencer(speech_split_conf, waveglow_conf)
+	speechsplit_inf = SpeechSplitInferencer(args, waveglow_conf)
 	waveglow_inf = WaveglowInferencer(args)
 
 	print("\nRunning SpeechSplit")
