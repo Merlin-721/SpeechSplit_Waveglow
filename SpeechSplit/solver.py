@@ -46,7 +46,7 @@ class Solver(object):
         self.log_dir = config.log_dir
         self.sample_dir = config.sample_dir
         self.G_save_dir = config.G_save_dir
-        self.P_save_dir = config.G_save_dir
+        self.P_save_dir = config.P_save_dir
 
         # Step size.
         self.log_step = config.log_step
@@ -90,10 +90,6 @@ class Solver(object):
         print("The number of parameters: {}".format(num_params))
         
         
-    def print_optimizer(self, opt, name):
-        print(opt)
-        print(name)
-        
 
     # TODO ADD FOR P 
     def restore_model(self, resume_iters):
@@ -103,7 +99,7 @@ class Solver(object):
         self.G.load_state_dict(g_checkpoint['model'])
         self.g_optimizer.load_state_dict(g_checkpoint['optimizer'])
         self.g_lr = self.g_optimizer.param_groups[0]['lr']
-        P_path = os.path.join(self.P_save_dir, '{}-G.ckpt'.format(resume_iters))
+        P_path = os.path.join(self.P_save_dir, '{}-P.ckpt'.format(resume_iters))
         p_checkpoint = torch.load(P_path, map_location=lambda storage, loc: storage)
         self.P.load_state_dict(p_checkpoint['model'])
         self.p_optimizer.load_state_dict(p_checkpoint['optimizer'])
@@ -148,8 +144,8 @@ class Solver(object):
             start_iters = self.resume_iters
             self.num_iters += self.resume_iters
             self.restore_model(self.resume_iters)
-            self.print_optimizer(self.g_optimizer, 'G_optimizer')
-            self.print_optimizer(self.p_optimizer, 'P_optimizer')
+            print(f'G Optimiser: \n {self.g_optimizer}')
+            print(f'P Optimiser: \n {self.p_optimizer}')
                         
         # Learning rate cache for decaying.
         g_lr = self.g_lr
@@ -265,8 +261,8 @@ class Solver(object):
                 k=0
                 for utt, f0 in zip(utts, f0s):
                     k+=1
-                    x_real_pad, _ = pad_seq_to_2(utt[np.newaxis,:,:], 192)
-                    f0_org,_ = pad_f0(f0.squeeze(),192)
+                    x_real_pad = pad_seq_to_2(utt[np.newaxis,:,:], 192)
+                    f0_org = pad_f0(f0.squeeze(),192)
                     f0_quantized = quantize_f0_numpy(f0_org)[0]
                     f0_onehot = f0_quantized[np.newaxis, :, :]
                     f0_org_val = torch.from_numpy(f0_onehot).to(self.device) 
