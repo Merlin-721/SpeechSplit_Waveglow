@@ -278,7 +278,7 @@ class Decoder_4(nn.Module):
         return decoder_output         
     
     
-
+# G - Generator
 class Generator_3(nn.Module):
     """SpeechSplit model"""
     def __init__(self, hparams):
@@ -319,7 +319,7 @@ class Generator_3(nn.Module):
         return codes_2
 
     
-    
+# P - F0 Converter 
 class Generator_6(nn.Module):
     """F0 converter
     """
