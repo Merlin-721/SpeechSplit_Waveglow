@@ -1,17 +1,25 @@
-import tfcompat.hparam 
+from .TFhparams import HParams
 
 # NOTE: If you want full control for model architecture. please take a look
 # at the code and change whatever you want. Some hyper parameters are hardcoded.
 
 # Default hyperparameters:
-hparams = tfcompat.hparam.HParams(
-    # model   
+hparams = HParams(
+    # Content Encoder (Encoder_7)
     freq = 8,
     dim_neck = 8,
+    dim_enc = 512, 
+
+    # Rhythm encoder (Encoder_t)
     freq_2 = 8,
-    dim_neck_2 = 1,
+    dim_neck_2 = 1, 
+    dim_enc_2 = 128, 
+
+    # F0 encoder (Encoder_6)
     freq_3 = 8,
     dim_neck_3 = 32,
+    dim_enc_3 = 256, 
+
     out_channels = 10 * 3,
     layers = 24,
     stacks = 4,
@@ -29,9 +37,6 @@ hparams = tfcompat.hparam.HParams(
     freq_axis_kernel_size = 3,
     legacy = True,
     
-    dim_enc = 512,
-    dim_enc_2 = 128,
-    dim_enc_3 = 256,
     
     dim_freq = 80,
     dim_spk_emb = 82,
