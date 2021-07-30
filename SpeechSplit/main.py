@@ -19,10 +19,8 @@ def main(config):
     # Create directories if not exist.
     if not os.path.exists(config.log_dir):
         os.makedirs(config.log_dir)
-    if not os.path.exists(config.G_save_dir):
-        os.makedirs(config.G_save_dir)
-    if not os.path.exists(config.P_save_dir):
-        os.makedirs(config.P_save_dir)
+    if not os.path.exists(config.save_dir):
+        os.makedirs(config.save_dir)
     if not os.path.exists(config.sample_dir):
         os.makedirs(config.sample_dir)
 
@@ -57,8 +55,7 @@ if __name__ == '__main__':
 
     # Directories.
     parser.add_argument('--log_dir', type=str, default='run/logs')
-    parser.add_argument('--G_save_dir', type=str, default='run/models/G')
-    parser.add_argument('--P_save_dir', type=str, default='run/models/P')
+    parser.add_argument('--save_dir', type=str, default='run/models/')
     parser.add_argument('--sample_dir', type=str, default='run/samples')
 
     # Step size.
