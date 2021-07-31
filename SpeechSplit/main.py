@@ -19,8 +19,10 @@ def main(config):
     # Create directories if not exist.
     if not os.path.exists(config.log_dir):
         os.makedirs(config.log_dir)
-    if not os.path.exists(config.save_dir):
-        os.makedirs(config.save_dir)
+    if not os.path.exists(os.path.join(config.save_dir,'G')):
+        os.makedirs(os.path.join(config.save_dir,'G'))
+    if not os.path.exists(os.path.join(config.save_dir,'P')):
+        os.makedirs(os.path.join(config.save_dir,'P'))
     if not os.path.exists(config.sample_dir):
         os.makedirs(config.sample_dir)
 
