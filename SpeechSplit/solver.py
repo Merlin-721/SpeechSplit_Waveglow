@@ -240,13 +240,13 @@ class Solver(object):
                     G_path = os.path.join(self.save_dir, 'G/{}-G.ckpt'.format(i+1))
                     torch.save({'model': self.G.state_dict(),
                                 'optimizer': self.g_optimizer.state_dict()}, G_path)
-                    print(f"Saved G checkpoint to:\n{self.G_save_dir}")
+                    print(f"Saved G checkpoint to:\n{G_path}")
 
                 if self.train_P:
                     P_path = os.path.join(self.save_dir, 'P/{}-P.ckpt'.format(i+1))
                     torch.save({'model': self.P.state_dict(),
                                 'optimizer': self.p_optimizer.state_dict()}, P_path)
-                    print(f"Saved P checkpoint to:\n{self.P_save_dir}")
+                    print(f"Saved P checkpoint to:\n{P_path}")
 
             # Validation.
             if (i+1) % self.sample_step == 0:
