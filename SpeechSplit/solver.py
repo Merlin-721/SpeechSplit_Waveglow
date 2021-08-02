@@ -313,7 +313,7 @@ class Solver(object):
                         ax3.imshow(melsp_woC, aspect='auto', vmin=min_value, vmax=max_value)
                         ax3.set_title('G w/o Content')
                         ax4.imshow(melsp_woR, aspect='auto', vmin=min_value, vmax=max_value)
-                        ax4.set_title('G w/o Rythm')
+                        ax4.set_title('G w/o Rhythm')
                         ax5.imshow(melsp_woF, aspect='auto', vmin=min_value, vmax=max_value)
                         ax5.set_title('G w/o F0')
                         fig.subplots_adjust(top=0.901,bottom=0.046,left=0.051,right=0.977,hspace=0.4,wspace=0.2)
