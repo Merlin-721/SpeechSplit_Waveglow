@@ -58,7 +58,7 @@ hparams = HParams(
     batch_size = 64,
     mode = 'train',
     shuffle = True,
-    num_workers = 1,
+    num_workers = 0,
     samplier = 8,
 
     # Convenient model builder
