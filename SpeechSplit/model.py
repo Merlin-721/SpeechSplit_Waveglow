@@ -284,9 +284,9 @@ class Generator_3(nn.Module):
     def __init__(self, hparams):
         super().__init__()
         
-        self.encoder_1 = Encoder_7(hparams)
-        self.encoder_2 = Encoder_t(hparams)
-        self.decoder = Decoder_3(hparams)
+        self.encoder_1 = Encoder_7(hparams) # Content/Sync encoder
+        self.encoder_2 = Encoder_t(hparams) # Rhythm encoder 
+        self.decoder = Decoder_3(hparams) # Decoder module
     
         self.freq = hparams.freq
         self.freq_2 = hparams.freq_2
