@@ -6,16 +6,16 @@ from TFhparams import HParams
 # Default hyperparameters:
 hparams = HParams(
     # Content Encoder (Encoder_7)
-    freq = 8,
-    dim_neck = 8,
-    dim_enc = 512, 
+    freq = 8, # downsample factor (tune)
+    dim_neck = 8, # BLSTM dim
+    dim_enc = 512, # Conv dim (tune)
 
     # Rhythm encoder (Encoder_t)
     freq_2 = 8,
     dim_neck_2 = 1, 
     dim_enc_2 = 128, 
 
-    # F0 encoder (Encoder_6)
+    # Pitch encoder (Encoder_6)
     freq_3 = 8,
     dim_neck_3 = 32,
     dim_enc_3 = 256, 
