@@ -11,7 +11,8 @@ import datetime
 import pickle
 import random
 import json
-
+import torch_xla
+import torch_xla.core.xla_model as xm
 from utils import pad_seq_to_2, pad_f0, quantize_f0_torch, quantize_f0_numpy
 
 # use demo data for simplicity
@@ -41,7 +42,8 @@ class Solver(object):
         # Miscellaneous.
         self.use_tensorboard = config.use_tensorboard
         self.use_cuda = torch.cuda.is_available()
-        self.device = torch.device('cuda:{}'.format(config.device_id) if self.use_cuda else 'cpu')
+        # self.device = torch.device('cuda:{}'.format(config.device_id) if self.use_cuda else 'cpu')
+        self.device = xm.xla_device()
 
         # Directories.
         self.log_dir = config.log_dir
