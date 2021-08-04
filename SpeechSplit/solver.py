@@ -234,7 +234,7 @@ class Solver(object):
                         
                         
             # Save model checkpoints.
-            if (i+1) % self.model_save_step == 0 and i >= int(self.num_iters*0.25):
+            if (i+1) % self.model_save_step == 0 and i >= int(self.num_iters*0.2):
                 print()
                 if self.train_G:
                     G_path = os.path.join(self.save_dir, 'G/{}-G.ckpt'.format(i+1))
@@ -312,10 +312,10 @@ class Solver(object):
                         ax2.set_title('G straight conversion')
                         ax3.imshow(melsp_woC, aspect='auto', vmin=min_value, vmax=max_value)
                         ax3.set_title('G w/o Content')
-                        ax5.imshow(melsp_woF, aspect='auto', vmin=min_value, vmax=max_value)
-                        ax5.set_title('G w/o Pitch')
-                        ax4.imshow(melsp_woR, aspect='auto', vmin=min_value, vmax=max_value)
-                        ax4.set_title('G w/o Rhythm')
+                        ax4.imshow(melsp_woF, aspect='auto', vmin=min_value, vmax=max_value)
+                        ax4.set_title('G w/o Pitch')
+                        ax5.imshow(melsp_woR, aspect='auto', vmin=min_value, vmax=max_value)
+                        ax5.set_title('G w/o Rhythm')
                         fig.subplots_adjust(top=0.901,bottom=0.046,left=0.051,right=0.977,hspace=0.4,wspace=0.2)
                         plt.savefig(f'{self.sample_dir}/{step}_{name}_{k}.png', dpi=150)
                         plt.close(fig)
