@@ -87,7 +87,7 @@ def pad_seq_to_2(x, len_out=128):
     length = x.shape[1]
     if length <= len_out:
         len_pad = len_out-length
-        return np.pad(x, ((0,0),(0,len_pad),(0,0)), 'constant')
+        return np.pad(x, ((0,0),(0,len_pad),(0,0)), 'minimum')
     else:
         start = int(np.floor((length-len_out))/2)
         return x[:, start:start+len_out]

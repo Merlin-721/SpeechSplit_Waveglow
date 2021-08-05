@@ -116,7 +116,7 @@ class MyCollator(object):
             
             # a = np.clip(a, 0, 1)
             
-            a_pad = np.pad(a, ((0,self.max_len_pad-a.shape[0]),(0,0)), 'constant')
+            a_pad = np.pad(a, ((0,self.max_len_pad-a.shape[0]),(0,0)), 'minimum')
             c_pad = np.pad(c[:,np.newaxis], ((0,self.max_len_pad-c.shape[0]),(0,0)), 'constant', constant_values=-1e10)
             
             new_batch.append( (a_pad, b, c_pad, len_crop) ) 

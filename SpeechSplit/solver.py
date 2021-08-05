@@ -287,12 +287,14 @@ class Solver(object):
                         g_loss_val = F.mse_loss(x_identic_val,x_real_pad, reduction='mean')
                         G_loss_values.append(g_loss_val.item())
 
+                        empty_mel = torch.full(x_real_pad.shape, -12.0, dtype=torch.float32).to(self.device)
                         x_f0_F = torch.cat((x_real_pad, torch.zeros_like(f0_org_val)), dim=-1)
-                        x_f0_C = torch.cat((torch.zeros_like(x_real_pad), f0_org_val), dim=-1)
+                        # x_f0_C = torch.cat((torch.zeros_like(x_real_pad), f0_org_val), dim=-1)
+                        x_f0_C = torch.cat((empty_mel, f0_org_val), dim=-1)
                         
                         x_identic_val = self.G(x_f0, x_real_pad, emb)
                         x_identic_woF = self.G(x_f0_F, x_real_pad, emb)
-                        x_identic_woR = self.G(x_f0, torch.zeros_like(x_real_pad), emb)
+                        x_identic_woR = self.G(x_f0, empty_mel, emb)
                         x_identic_woC = self.G(x_f0_C, x_real_pad, emb)
                         
                         melsp_gd_pad = x_real_pad[0].cpu().numpy().T
