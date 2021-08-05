@@ -90,15 +90,15 @@ class Encoder_t(nn.Module):
     
     
 class Encoder_6(nn.Module):
-    """F0 encoder
+    """Pitch F0 encoder
     """
     def __init__(self, hparams):
         super().__init__()
 
-        self.dim_neck_3 = hparams.dim_neck_3
         self.freq_3 = hparams.freq_3
-        self.dim_f0 = hparams.dim_f0
+        self.dim_neck_3 = hparams.dim_neck_3
         self.dim_enc_3 = hparams.dim_enc_3
+        self.dim_f0 = hparams.dim_f0
         self.dim_emb = hparams.dim_spk_emb
         self.chs_grp = hparams.chs_grp
         self.register_buffer('len_org', torch.tensor(hparams.max_len_pad))
@@ -141,7 +141,7 @@ class Encoder_6(nn.Module):
     
     
 class Encoder_7(nn.Module):
-    """Sync Encoder module
+    """Content Encoder module
     """
     def __init__(self, hparams):
         super().__init__()
