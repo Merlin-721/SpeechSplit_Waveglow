@@ -227,8 +227,8 @@ class Solver(object):
                 mins = seconds / 60
                 hrs = mins / 60
                 lossString = '; '.join([f'{k} {round(v,8)}' for k, v in loss.items()])
-                print( f'Iteration [{i+1}/{self.num_iters}]' + lossString)
-                print(f'Time elapsed: {et_str}; Time remaining:{round(hrs/24,2)} days, {round(hrs,2)} hrs or {round(mins,1)} mins')
+                print( f'Iteration [{i+1}/{self.num_iters}] ' + lossString)
+                print(f'Time elapsed: {et_str}; Time remaining: {round(hrs/24,2)} days, {round(hrs,2)} hrs or {round(mins,1)} mins')
                 for tag, value in loss.items():
                     self.writer.add_scalar(tag, value, i+1)
                         
