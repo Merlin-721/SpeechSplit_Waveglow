@@ -83,7 +83,9 @@ class Solver(object):
 
     def dump_hparams(self):
         with open(f'{self.save_dir}/hparams.json', 'w') as fp:
-            json.dump(self.hparams.to_json(indent=0), fp)
+            dic = dir(self.hparams)
+            like_json = {name:getattr(self.hparams,name) for name in dic if not name.startswith('__')}
+            json.dump(like_json, fp)
         
     def print_network(self, model, name):
         """Print out the network information."""

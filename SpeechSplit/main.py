@@ -2,15 +2,21 @@ import os
 import argparse
 import torch
 from torch.backends import cudnn
-
+from types import SimpleNamespace
+import json
 from solver import Solver
 from data_loader import get_loader, infinite_iter
-from hparams import hparams, hparams_debug_string
 
 
 
 def str2bool(v):
     return v.lower() in ('true')
+
+def show_hparams(hparams):
+    dic = dir(hparams)
+    hyps = [f"{name}: {getattr(hparams,name)}" for name in dic if not name.startswith('__')]
+    print('\nHyperparameters:\n' + '\n'.join(hyps))
+
 
 def main(config):
     # For fast training.
@@ -27,6 +33,13 @@ def main(config):
         os.makedirs(config.sample_dir)
 
     # Data loader.
+    # Model Hyperparameters
+    with open(config.hparams) as f:
+        hparams = json.load(f,object_hook=lambda d: SimpleNamespace(**d)) 
+
+    print(config)
+    show_hparams(hparams)
+
     vcc_loader = get_loader(hparams)
     vcc_infinite_loader = infinite_iter(vcc_loader)
     
@@ -49,6 +62,7 @@ if __name__ == '__main__':
     parser.add_argument('--resume_iters', type=int, default=None, help='resume training from this step')
     parser.add_argument('--train_G', action='store_true', help='option to train G')
     parser.add_argument('--train_P', action='store_true', help='option to train P')
+    parser.add_argument('--hparams', type=str, default='hparams.json')
     parser.add_argument('--val_path', type=str, default='assets/validation.pkl')
 
     # Miscellaneous.
@@ -66,6 +80,4 @@ if __name__ == '__main__':
     parser.add_argument('--model_save_step', type=int, default=2000)
 
     config = parser.parse_args()
-    print(config)
-    print(hparams_debug_string())
     main(config)
