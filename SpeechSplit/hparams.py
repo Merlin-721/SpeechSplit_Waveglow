@@ -55,7 +55,7 @@ hparams = HParams(
     # data loader
     root_dir = 'assets/spmel',
     feat_dir = 'assets/raptf0',
-    batch_size = 64,
+    batch_size = 128,
     mode = 'train',
     shuffle = True,
     num_workers = 0,
