@@ -289,7 +289,6 @@ class Solver(object):
 
                         empty_mel = torch.full(x_real_pad.shape, -12.0, dtype=torch.float32).to(self.device)
                         x_f0_F = torch.cat((x_real_pad, torch.zeros_like(f0_org_val)), dim=-1)
-                        # x_f0_C = torch.cat((torch.zeros_like(x_real_pad), f0_org_val), dim=-1)
                         x_f0_C = torch.cat((empty_mel, f0_org_val), dim=-1)
                         
                         x_identic_val = self.G(x_f0, x_real_pad, emb)
