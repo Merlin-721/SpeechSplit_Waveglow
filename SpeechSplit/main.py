@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
     # Directories.
     parser.add_argument('--log_dir', type=str, default='run/logs')
-    parser.add_argument('--save_dir', type=str, default='run/models/')
+    parser.add_argument('--save_dir', type=str, default='run/models')
     parser.add_argument('--sample_dir', type=str, default='run/samples')
 
     # Step size.
