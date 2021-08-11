@@ -13,3 +13,5 @@ logs/
 models/
 processed_assets/
 run/
+SpeechSplit/main_grid.py
+SpeechSplit/done_already.txt
