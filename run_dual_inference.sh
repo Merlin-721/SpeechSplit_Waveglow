@@ -3,7 +3,7 @@ python dual_inference.py \
 	-target=SpeechSplit/assets/wavs/p228/p228_024.wav \
 	-output_dir=Converted_wavs \
 	-output_name=test \
-	-speech_split_conf=SpeechSplit/config.json \
+	-speech_split_conf=SpeechSplit/hparams.json \
 	-ss_g=SpeechSplit/assets/660000-G.ckpt \
 	-ss_p=SpeechSplit/assets/640000-P.ckpt \
 	-waveglow_model=Waveglow/models/waveglow_swara_model_544000_16kHz.pt \

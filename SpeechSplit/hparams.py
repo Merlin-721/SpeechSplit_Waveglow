@@ -1,4 +1,4 @@
-from TFhparams import HParams
+from .TFhparams import HParams
 
 # NOTE: If you want full control for model architecture. please take a look
 # at the code and change whatever you want. Some hyper parameters are hardcoded.
@@ -65,7 +65,7 @@ hparams = HParams(
     builder = "wavenet",
 
     hop_size = 256,
-    sample_rate = 22050,
+    sample_rate = 16000,
     log_scale_min = float(-32.23619130191664),
     
 )

@@ -17,7 +17,7 @@ if __name__ == '__main__':
 	parser.add_argument('-speech_split_conf', help='SpeechSplit config file path')
 	parser.add_argument('-ss_g', help='SpeechSplit G model path')
 	parser.add_argument('-ss_p', help='SpeechSplit P model path')
-	parser.add_argument('-sample_rate', '-sr', help='sample rate', default=22050, type=int)
+	parser.add_argument('-sample_rate', '-sr', help='sample rate', default=16000, type=int)
 
 	# Waveglow
 	parser.add_argument('-waveglow_model','-w',  help='Path to waveglow decoder model')
