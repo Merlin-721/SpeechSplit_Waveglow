@@ -44,7 +44,7 @@
 
 "root_dir" : "assets/spmel",
 "feat_dir" : "assets/raptf0",
-"batch_size" : 128,
+"batch_size" : 16,
 "mode" : "train",
 "shuffle" : true,
 "num_workers" : 0,
@@ -53,6 +53,6 @@
 "builder" : "wavenet",
 
 "hop_size" : 256,
-"sample_rate" : 22050,
+"sample_rate" : 16000,
 "log_scale_min" : -32.23619130191664
 }
