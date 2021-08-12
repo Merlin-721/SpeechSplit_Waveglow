@@ -18,8 +18,8 @@
         "filter_length": 1024,
         "hop_length": 256,
         "win_length": 1024,
-        "mel_fmin": 0.0,
-        "mel_fmax": 8000.0
+        "mel_fmin": 90,
+        "mel_fmax": 7600.0
     },
     "dist_config": {
         "dist_backend": "nccl",
