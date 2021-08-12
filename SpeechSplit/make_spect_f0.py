@@ -21,7 +21,7 @@ def get_f0(wav, lo, hi, fs):
     f0_norm = speaker_normalization(f0_rapt, index_nonzero, mean_f0, std_f0)
     return f0_rapt, f0_norm
 
-def make_train_data(rootDir, targetDir_f0, targetDir, waveglow_config): 
+def make_train_data(rootDir, targetDir_f0, targetDir): 
 
     dirName, subdirList, _ = next(os.walk(rootDir))
     print('Found directory: %s' % dirName)
