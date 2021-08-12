@@ -14,7 +14,6 @@ if __name__ == '__main__':
 	parser.add_argument('-output_name', help='name of output file')
 
 	# SpeechSplit
-	parser.add_argument('-speech_split_conf', help='SpeechSplit config file path')
 	parser.add_argument('-ss_g', help='SpeechSplit G model path')
 	parser.add_argument('-ss_p', help='SpeechSplit P model path')
 	parser.add_argument('-sample_rate', '-sr', help='sample rate', default=16000, type=int)
@@ -22,7 +21,7 @@ if __name__ == '__main__':
 	# Waveglow
 	parser.add_argument('-waveglow_model','-w',  help='Path to waveglow decoder model')
 	parser.add_argument('-waveglow_conf',  help='Path to waveglow config')
-	parser.add_argument("-sigma", default=1.0, type=float)
+	parser.add_argument("-sigma", default=0.6, type=float)
 	parser.add_argument("--is_fp16", action="store_true")
 	parser.add_argument("-denoiser_strength","-d", default=0.0, type=float, 
 				help='Removes model bias. Start with 0.1 and adjust')
@@ -38,26 +37,27 @@ if __name__ == '__main__':
 		print(f"Obtaining waveglow config from {args.waveglow_conf}")
 		waveglow_conf = json.load(f)['data_config']
 
-	speechsplit_inf = SpeechSplitInferencer(args, waveglow_conf)
+	speechsplit_inf = SpeechSplitInferencer(args)
 	waveglow_inf = WaveglowInferencer(args)
 
 	print("\nRunning SpeechSplit")
 	print(f"Reading audio from:\n{args.source} and \n{args.target}")
 	src_mel, trg_mel, trg_f0_norm = speechsplit_inf.read_audio(args.source, args.target)
-	plot_data(src_mel,"source")
-	plot_data(trg_mel,"target")
+	# plot_data(src_mel,"source")
+	# plot_data(trg_mel,"target")
+
 	print(f"Preprocessing data")
 	src_utt_pad, trg_utt_pad, trg_f0_onehot = speechsplit_inf.prep_data(src_mel, trg_mel, trg_f0_norm)
-	plot_data(src_utt_pad.cpu().numpy(),"src padded")
-	plot_data(trg_utt_pad.cpu().numpy(), "trg padded")
+	# plot_data(src_utt_pad.cpu().numpy(),"src padded")
+	# plot_data(trg_utt_pad.cpu().numpy(), "trg padded")
+
 	print(f"Running inference")
 	utt_pred = speechsplit_inf.forward(src_utt_pad, trg_utt_pad, trg_f0_onehot)
-	plot_data(utt_pred,"prediction")
-	# plot_data(mel)
+	# plot_data(utt_pred,"prediction")
+
 	print("\nRunning Waveglow")
-	# name = f"{args.oneshot_model.split('/')[-1][-9:-5]}_sig_{args.sigma}_den_{args.denoiser_strength}_{args.output_name}"
 	g = args.ss_g.split('/')[-1].split('.')[0]
 	p = args.ss_p.split('/')[-1].split('.')[0]
 	name = f"{g}_{p}_"
 	name += f"{args.source.split('/')[-1][:4]}_to_{args.target.split('/')[-1][:4]}_{args.output_name}"
-	waveglow_inf.inference(utt_pred.T, name)
+	waveglow_inf.inference(utt_pred.T, name, plot=True)
