@@ -65,6 +65,7 @@ hparams = HParams(
     builder = "wavenet",
 
     hop_size = 256,
+    window_length = 1024,
     sample_rate = 16000,
     log_scale_min = float(-32.23619130191664),
     
