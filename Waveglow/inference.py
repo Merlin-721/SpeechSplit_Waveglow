@@ -46,7 +46,7 @@ class WaveglowInferencer(object):
         if args.denoiser_strength > 0:
             self.denoiser = Denoiser(self.waveglow).cuda()
         
-    def inference(self, mel, filename):
+    def inference(self, mel, filename, plot=False):
         # takes transposed mel from oneshot
         with torch.no_grad():
             mel = torch.from_numpy(mel.astype("float32")).unsqueeze(0).cuda()
@@ -57,10 +57,13 @@ class WaveglowInferencer(object):
                 mel = mel.unsqueeze(0)
             mel = mel.half() if self.args.is_fp16 else mel
 
-            plot_data(mel.squeeze(0).cpu().numpy().T.astype("float32"), "WG Denoised mel")
+            # Scale output of SpeechSplit from [0,1] to [-12,2]
+            mel_scaled = mel * (2 - - 12) + -12
 
-            audio = self.waveglow.infer(mel, sigma=self.args.sigma)
+            if plot:
+                plot_data(mel_scaled.squeeze(0).cpu().numpy().T.astype("float32"), "WG Denoised mel")
 
+            audio = self.waveglow.infer(mel_scaled, sigma=self.args.sigma)
             audio = audio * MAX_WAV_VALUE
 
             audio = audio.squeeze(0).cpu().numpy()
@@ -80,7 +83,7 @@ if __name__ == "__main__":
     parser.add_argument('-o', "--output", required=True)
     parser.add_argument("-output_name", required=True)
     parser.add_argument("-s", "--sigma", default=1.0, type=float)
-    parser.add_argument("--sampling_rate", default=22050, type=int)
+    parser.add_argument("--sampling_rate", default=16000, type=int)
     parser.add_argument("--is_fp16", action="store_true")
     parser.add_argument("-d", "--denoiser_strength", default=0.0, type=float,
                         help='Removes model bias. Start with 0.1 and adjust')
