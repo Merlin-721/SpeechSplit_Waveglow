@@ -2,16 +2,17 @@ import os
 import pickle
 import numpy as np
 import json
-import torch
+import soundfile as sf
 from scipy import signal
 from numpy.random import RandomState
 from pysptk import sptk
-from .utils import butter_highpass, speaker_normalization
+from .utils import *
 from .hparams import hparams
 from .audioRead import MAX_WAV_VALUE
-from Waveglow.mel2samp import load_wav_to_torch, Mel2Samp
 
 SAMPLE_RATE = hparams.sample_rate
+min_level = np.exp(-100 / 20 * np.log(10))
+mel_basis = mel(SAMPLE_RATE, hparams.window_length, fmin=90, fmax=7600, n_mels=80).T
 
 def get_f0(wav, lo, hi, fs):
     f0_rapt = sptk.rapt(wav.astype(np.float32)*MAX_WAV_VALUE, fs, hparams.hop_size, min=lo, max=hi, otype=2)
@@ -21,8 +22,6 @@ def get_f0(wav, lo, hi, fs):
     return f0_rapt, f0_norm
 
 def make_train_data(rootDir, targetDir_f0, targetDir, waveglow_config): 
-
-    MelProcessor = Mel2Samp(**waveglow_config)
 
     dirName, subdirList, _ = next(os.walk(rootDir))
     print('Found directory: %s' % dirName)
@@ -53,23 +52,25 @@ def make_train_data(rootDir, targetDir_f0, targetDir, waveglow_config):
         prng = RandomState(int(subdir[1:])) 
         for fileName in sorted(fileList):
             # read audio file
-            audio, fs = load_wav_to_torch(os.path.join(dirName,subdir, fileName))
+            x, fs = sf.read(os.path.join(dirName,subdir,fileName))
             assert fs == SAMPLE_RATE
-
-            if audio.shape[0] % hparams.hop_size == 0:
-                audio = torch.tensor(np.concatenate((audio, np.array([1e-06])), axis=0), dtype=torch.float32)
+            if x.shape[0] % 256 == 0:
+                x = np.concatenate((x, np.array([1e-06])), axis=0)
+            y = signal.filtfilt(b, a, x)
+            wav = y * 0.96 + (prng.rand(y.shape[0])-0.5)*1e-06
             
             # compute spectrogram
-            melspectrogram = MelProcessor.get_mel(audio).T.numpy()
-            # extract f0
-            y = signal.filtfilt(b, a, audio)
-            wav = y * 0.96 + (prng.rand(y.shape[0])-0.5)*1e-06
+            D = pySTFT(wav).T
+            D_mel = np.dot(D, mel_basis)
+            D_db = 20 * np.log10(np.maximum(min_level, D_mel)) - 16
+            mel = (D_db + 100) / 100     
+
             _, f0_norm = get_f0(wav, lo, hi, fs)
             
-            assert len(melspectrogram) == len(f0_norm)
+            assert len(mel) == len(f0_norm)
             print(f"Saving {fileName}")
             np.save(os.path.join(targetDir, subdir, fileName[:-4]),
-                    melspectrogram.astype(np.float32), allow_pickle=False)    
+                    mel.astype(np.float32), allow_pickle=False)    
             np.save(os.path.join(targetDir_f0, subdir, fileName[:-4]),
                     f0_norm.astype(np.float32), allow_pickle=False)
 
