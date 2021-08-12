@@ -1,47 +1,58 @@
 import torch
 from scipy import signal
 import numpy as np
+from numpy.random import RandomState
 import pickle
-import json
-from types import SimpleNamespace
-
+import soundfile as sf
+from .hparams import hparams
 from SpeechSplit.make_spect_f0 import get_f0
 from SpeechSplit.audioRead import get_id
 from SpeechSplit.utils import *
 from SpeechSplit.model import Generator_3 as Generator
 from SpeechSplit.model import Generator_6 as F0_Converter
-from Waveglow.mel2samp import load_wav_to_torch, Mel2Samp
 
 
 class SpeechSplitInferencer(object):
-	def __init__(self,args, waveglow_config):
+	def __init__(self,args):
 		self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-		with open(args.speech_split_conf) as f:
-			self.config = json.load(f,object_hook=lambda d: SimpleNamespace(**d))
+		self.hparams = hparams
 		self.G_path = args.ss_g
 		self.P_path = args.ss_p
 		self.G, self.P = self.load_models()
-		self.MelProcessor = Mel2Samp(**waveglow_config)
+
+		self.min_level = np.exp(-100 / 20 * np.log(10))
+		self.mel_basis = mel(args.sample_rate, hparams.window_length, 
+										fmin=90, fmax=7600, n_mels=hparams.cin_channels).T
 
 		self.spk2gen = pickle.load(open('SpeechSplit/assets/spk2gen.pkl', "rb"))
 		self.b, self.a = butter_highpass(30, args.sample_rate, order=5)
 		
 	def load_models(self):
-		G = Generator(self.config).eval().to(self.device)
+		G = Generator(self.hparams).eval().to(self.device)
 		g_checkpoint = torch.load(self.G_path, map_location=lambda storage, loc: storage)
 		G.load_state_dict(g_checkpoint['model'])
 
-		P = F0_Converter(self.config).eval().to(self.device)
+		P = F0_Converter(self.hparams).eval().to(self.device)
 		p_checkpoint = torch.load(self.P_path, map_location=lambda storage, loc: storage)
 		P.load_state_dict(p_checkpoint['model'])
 		return G, P
 
 	def gen_mel(self, path):
-		audio, sr = load_wav_to_torch(path)
-		if audio.shape[0] % self.config.hop_size == 0:
-			audio = torch.tensor(np.concatenate((audio, np.array([1e-06])), axis=0), dtype=torch.float32)
-		mel = self.MelProcessor.get_mel(audio).T.numpy()
-		return audio, mel, sr
+        # read audio file
+		audio, sr = sf.read(path)
+		assert sr == self.hparams.sample_rate
+		if audio.shape[0] % 256 == 0:
+			audio = np.concatenate((audio, np.array([1e-06])), axis=0)
+		y = signal.filtfilt(self.b, self.a, audio)
+		wav = y * 0.96 + (self.prng.rand(y.shape[0])-0.5)*1e-06
+
+		# compute spectrogram
+		D = pySTFT(wav).T
+		D_mel = np.dot(D, self.mel_basis)
+		D_db = 20 * np.log10(np.maximum(self.min_level, D_mel)) - 16
+		mel = (D_db + 100) / 100    
+
+		return wav, mel, sr
 
 	def read_audio(self, src_path, trg_path):
 		self.trg_spkr = trg_path.split('/')[-1].split('_')[0]
@@ -52,16 +63,15 @@ class SpeechSplitInferencer(object):
 		else:
 			raise ValueError("Speaker not in dataset")
 		print(f"Found target speaker {self.trg_spkr}, loading features...")
+		self.prng = RandomState(int(self.trg_spkr[1:])) 
 
 		# get src and trg mels
-		_        , src_mel, src_sr = self.gen_mel(src_path)
-		trg_audio, trg_mel, trg_sr = self.gen_mel(src_path)
+		_,       src_mel, src_sr = self.gen_mel(src_path)
+		trg_wav, trg_mel, trg_sr = self.gen_mel(trg_path)
 		assert src_sr == trg_sr
 
 		# get trg f0
-		y = signal.filtfilt(self.b, self.a, trg_audio)
-		wav = y * 0.96 + np.random.rand(y.shape[0])*1e-06
-		_, trg_f0_norm = get_f0(wav, lo, hi, trg_sr)
+		_, trg_f0_norm = get_f0(trg_wav, lo, hi, trg_sr)
 
 		return src_mel, trg_mel, trg_f0_norm
 
@@ -72,7 +82,7 @@ class SpeechSplitInferencer(object):
 		return utt_pad
 
 	def prep_data(self, src_mel, trg_mel, trg_f0_norm):
-		max_len = self.config.max_len_pad
+		max_len = self.hparams.max_len_pad
 		src_utt_pad = self.pad_utt(src_mel, max_len)
 		trg_utt_pad = self.pad_utt(trg_mel, max_len)
 
@@ -88,16 +98,18 @@ class SpeechSplitInferencer(object):
 	def forward(self, src_utt, trg_utt, trg_f0):
 		# src utt is padded
 		# trg f0 is onehot
-		emb = get_id(self.trg_spkr, self.spk2gen)
-		emb = torch.tensor(emb).unsqueeze(0).to(self.device)
+		src_utt = src_utt.type(torch.float32)
+		trg_utt, trg_f0 = trg_utt.type(torch.float32), trg_f0.type(torch.float32)
 		# P forward
 		with torch.no_grad():
 			f0_pred = self.P(src_utt, trg_f0)[0]
 			f0_pred_quantized = f0_pred.argmax(dim=-1).squeeze(0)
-			f0_con_onehot = torch.zeros((1, self.config.max_len_pad, 257), device=self.device)
-			f0_con_onehot[0, torch.arange(self.config.max_len_pad), f0_pred_quantized] = 1
+			f0_con_onehot = torch.zeros((1, self.hparams.max_len_pad, 257), device=self.device)
+			f0_con_onehot[0, torch.arange(self.hparams.max_len_pad), f0_pred_quantized] = 1
 		uttr_f0_trg = torch.cat((src_utt, f0_con_onehot), dim=-1)    
 		# G forward
+		emb = get_id(self.trg_spkr, self.spk2gen)
+		emb = torch.tensor(emb).unsqueeze(0).to(self.device)
 		with torch.no_grad():
 			utt_pred = self.G(uttr_f0_trg, trg_utt, emb)
 			utt_pred = utt_pred[0,:uttr_f0_trg.shape[1],:].cpu().numpy()
