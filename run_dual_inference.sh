@@ -1,11 +1,12 @@
 python dual_inference.py \
-	-source=SpeechSplit/assets/wavs/p226/p226_003.wav \
-	-target=SpeechSplit/assets/wavs/p228/p228_024.wav \
+	-target=input_wavs/p226/p226_002.wav \
+	-source=input_wavs/p231/p231_002.wav \
 	-output_dir=Converted_wavs \
 	-output_name=test \
-	-speech_split_conf=SpeechSplit/hparams.json \
 	-ss_g=SpeechSplit/assets/660000-G.ckpt \
 	-ss_p=SpeechSplit/assets/640000-P.ckpt \
 	-waveglow_model=Waveglow/models/waveglow_swara_model_544000_16kHz.pt \
 	-waveglow_conf=Waveglow/config.json \
-	-sigma=1.0 \
+	--is_fp16 \
+	-sigma=0.6 \
+	-denoiser_strength=0.1 \
