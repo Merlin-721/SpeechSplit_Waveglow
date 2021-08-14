@@ -1,4 +1,7 @@
-from .TFhparams import HParams
+try:
+    from .TFhparams import HParams
+except:
+    from TFhparams import HParams
 
 # NOTE: If you want full control for model architecture. please take a look
 # at the code and change whatever you want. Some hyper parameters are hardcoded.

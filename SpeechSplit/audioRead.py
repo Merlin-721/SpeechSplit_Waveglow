@@ -8,8 +8,12 @@ from librosa.filters import mel
 from numpy.random import RandomState
 from pysptk import sptk #signal processing toolkit
 import pickle
-from .utils import butter_highpass, speaker_normalization, pySTFT
-from .hparams import hparams
+try:
+    from .utils import butter_highpass, speaker_normalization, pySTFT
+    from .hparams import hparams
+except:
+    from utils import butter_highpass, speaker_normalization, pySTFT
+    from hparams import hparams
 
 SAMPLE_RATE = hparams.sample_rate
 MAX_WAV_VALUE = 32768
