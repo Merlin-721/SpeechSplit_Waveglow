@@ -31,13 +31,45 @@ import json
 import torch
 import torch.utils.data
 import sys
+import numpy as np
+from numpy.random import RandomState
+from librosa.filters import mel
 from scipy.io.wavfile import read
+import soundfile as sf
+from scipy import signal
+# from SpeechSplit.utils import butter_highpass, pySTFT
 
 # We're using the audio processing from TacoTron2 to make sure it matches
 sys.path.insert(0, 'tacotron2')
-from SpeechSplit.tacotron2.layers import TacotronSTFT
+# from SpeechSplit.tacotron2.layers import TacotronSTFT
 
 MAX_WAV_VALUE = 32768.0
+
+
+def butter_highpass(cutoff, fs, order=5):
+    # Returns b (numerator) and a (denominator) polynomials
+    nyq = 0.5 * fs
+    normal_cutoff = cutoff / nyq
+    b, a = signal.butter(order, normal_cutoff, btype='high', analog=False)
+    return b, a
+    
+    
+    
+def pySTFT(x, fft_length=1024, hop_length=256):
+    
+    x = np.pad(x, int(fft_length//2), mode='reflect')
+    
+    noverlap = fft_length - hop_length
+    shape = x.shape[:-1]+((x.shape[-1]-noverlap)//hop_length, fft_length)
+    strides = x.strides[:-1]+(hop_length*x.strides[-1], x.strides[-1])
+    result = np.lib.stride_tricks.as_strided(x, shape=shape,
+                                             strides=strides)
+    
+    fft_window = signal.get_window('hann', fft_length, fftbins=True)
+    result = np.fft.rfft(fft_window * result, n=fft_length).T
+    
+    return np.abs(result)    
+
 
 def files_to_list(filename):
     """
@@ -70,40 +102,55 @@ class Mel2Samp(torch.utils.data.Dataset):
             random.shuffle(self.audio_files)
         except:
             pass
-        self.stft = TacotronSTFT(filter_length=filter_length,
-                                 hop_length=hop_length,
-                                 win_length=win_length,
-                                 sampling_rate=sampling_rate,
-                                 mel_fmin=mel_fmin, mel_fmax=mel_fmax)
+        # self.stft = TacotronSTFT(filter_length=filter_length,
+        #                          hop_length=hop_length,
+        #                          win_length=win_length,
+        #                          sampling_rate=sampling_rate,
+        #                          mel_fmin=mel_fmin, mel_fmax=mel_fmax)
         self.segment_length = segment_length
         self.sampling_rate = sampling_rate
 
+        self.min_level = np.exp(-100 / 20 * np.log(10))
+        self.mel_basis = mel(sampling_rate, win_length, fmin=90, fmax=7600, n_mels=80).T
+        self.b, self.a = butter_highpass(30, sampling_rate, order=5)
+
     def get_mel(self, audio):
-        audio_norm = audio / MAX_WAV_VALUE
-        audio_norm = audio_norm.unsqueeze(0)
-        audio_norm = torch.autograd.Variable(audio_norm, requires_grad=False)
-        melspec = self.stft.mel_spectrogram(audio_norm)
-        melspec = torch.squeeze(melspec, 0)
-        return melspec
+        if audio.shape[0] % 256 == 0:
+            audio = np.concatenate((audio, np.array([1e-06])), axis=0)
+        y = signal.filtfilt(self.b, self.a, audio)
+        prng = RandomState(1)
+        wav = y * 0.96 + (prng.rand(y.shape[0])-0.5)*1e-06
+        
+        # compute spectrogram
+        D = pySTFT(wav).T
+        D_mel = np.dot(D, self.mel_basis)
+        D_db = 20 * np.log10(np.maximum(self.min_level, D_mel)) - 16
+        mel = torch.tensor((D_db + 100) / 100 )
+        return mel.T
 
     def __getitem__(self, index):
         # Read audio
         filename = self.audio_files[index]
-        audio, sampling_rate = load_wav_to_torch(filename)
-        if sampling_rate != self.sampling_rate:
-            raise ValueError("{} SR doesn't match target {} SR".format(
-                sampling_rate, self.sampling_rate))
+        audio = sf.read(filename)[0]
+        audio = torch.tensor(audio)
+        # audio = torch.load(filename)
+        # audio, sampling_rate = load_wav_to_torch(filename)
+        # if sampling_rate != self.sampling_rate:
+        #     raise ValueError("{} SR doesn't match target {} SR".format(
+        #         sampling_rate, self.sampling_rate))
 
         # Take segment
-        if audio.size(0) >= self.segment_length:
-            max_audio_start = audio.size(0) - self.segment_length
+        if audio.shape[0] >= self.segment_length:
+            max_audio_start = audio.shape[0] - self.segment_length
             audio_start = random.randint(0, max_audio_start)
             audio = audio[audio_start:audio_start+self.segment_length]
         else:
             audio = torch.nn.functional.pad(audio, (0, self.segment_length - audio.size(0)), 'constant').data
 
         mel = self.get_mel(audio)
-        audio = audio / MAX_WAV_VALUE
+        mel = mel.type(torch.float32)
+        audio = audio.type(torch.float32)
+        # audio = audio / MAX_WAV_VALUE
 
         return (mel, audio)
 
