@@ -10,7 +10,7 @@ import time
 import datetime
 import pickle
 import random
-import json
+import simplejson
 
 from utils import pad_seq_to_2, pad_f0, quantize_f0_torch, quantize_f0_numpy
 
@@ -85,7 +85,7 @@ class Solver(object):
         with open(f'{self.save_dir}/hparams.json', 'w') as fp:
             dic = dir(self.hparams)
             like_json = {name:getattr(self.hparams,name) for name in dic if not name.startswith('__')}
-            json.dump(like_json, fp)
+            fp.write(simplejson.dumps(like_json, indent=4, sort_keys=False))
         
     def print_network(self, model, name):
         """Print out the network information."""
