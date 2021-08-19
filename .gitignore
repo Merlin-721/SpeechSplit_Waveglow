@@ -13,3 +13,6 @@ logs/
 models/
 processed_assets/
 run/
+Waveglow/data
+SpeechSplit/done_already.txt
+SpeechSplit/main_grid.py
