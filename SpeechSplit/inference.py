@@ -4,6 +4,7 @@ import numpy as np
 import pickle
 import json
 from types import SimpleNamespace
+from pathlib import Path
 
 from SpeechSplit.make_spect_f0 import get_f0
 from SpeechSplit.audioRead import get_id
@@ -11,7 +12,6 @@ from SpeechSplit.utils import *
 from SpeechSplit.model import Generator_3 as Generator
 from SpeechSplit.model import Generator_6 as F0_Converter
 from Waveglow.mel2samp import load_wav_to_torch, Mel2Samp
-
 
 class SpeechSplitInferencer(object):
 	def __init__(self,args, waveglow_config):
@@ -44,7 +44,8 @@ class SpeechSplitInferencer(object):
 		return audio, mel, sr
 
 	def read_audio(self, src_path, trg_path):
-		self.trg_spkr = trg_path.split('/')[-1].split('_')[0]
+		trg_path = Path(trg_path)
+		self.trg_spkr = trg_path.stem.split('_')[0]
 		if self.spk2gen[self.trg_spkr] == 'M':
 			lo, hi = 50, 250
 		elif self.spk2gen[self.trg_spkr] == 'F':
