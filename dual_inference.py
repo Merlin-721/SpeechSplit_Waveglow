@@ -1,5 +1,7 @@
 import os
 import json
+from pathlib import Path
+import numpy as np
 from argparse import ArgumentParser
 from show_mel import plot_data
 from SpeechSplit.inference import SpeechSplitInferencer
@@ -29,11 +31,24 @@ if __name__ == '__main__':
 
 	args = parser.parse_args()
 
+	if os.path.isdir(args.target):
+		raise Exception("Target is a directory. Please provide a single wav file")
+
+	if os.path.isdir(args.source):
+		wav_fpaths = list(Path(args.source).glob('**/*.wav'))
+		speakers = list(map(lambda wav_fpath: wav_fpath.parent.stem, wav_fpaths))	
+	else:
+		wav_fpaths = [Path(args.source)]
+		speakers = [Path(args.source).stem]
+	target = Path(args.target)
+
+	if not os.path.exists(target):
+		raise Exception(f"Target file {target} does not exist")
 
 	if not os.path.exists(args.output_dir):
 		os.makedirs(args.output_dir)
-
 	
+
 	with open(args.waveglow_conf) as f:
 		print(f"Obtaining waveglow config from {args.waveglow_conf}")
 		waveglow_conf = json.load(f)['data_config']
@@ -41,23 +56,32 @@ if __name__ == '__main__':
 	speechsplit_inf = SpeechSplitInferencer(args, waveglow_conf)
 	waveglow_inf = WaveglowInferencer(args)
 
-	print("\nRunning SpeechSplit")
 	print(f"Reading audio from:\n{args.source} and \n{args.target}")
-	src_mel, trg_mel, trg_f0_norm = speechsplit_inf.read_audio(args.source, args.target)
-	plot_data(src_mel,"source")
-	plot_data(trg_mel,"target")
-	print(f"Preprocessing data")
-	src_utt_pad, trg_utt_pad, trg_f0_onehot = speechsplit_inf.prep_data(src_mel, trg_mel, trg_f0_norm)
-	plot_data(src_utt_pad.cpu().numpy(),"src padded")
-	plot_data(trg_utt_pad.cpu().numpy(), "trg padded")
-	print(f"Running inference")
-	utt_pred = speechsplit_inf.forward(src_utt_pad, trg_utt_pad, trg_f0_onehot)
-	plot_data(utt_pred,"prediction")
-	# plot_data(mel)
-	print("\nRunning Waveglow")
-	# name = f"{args.oneshot_model.split('/')[-1][-9:-5]}_sig_{args.sigma}_den_{args.denoiser_strength}_{args.output_name}"
-	g = args.ss_g.split('/')[-1].split('.')[0]
-	p = args.ss_p.split('/')[-1].split('.')[0]
-	name = f"{g}_{p}_"
-	name += f"{args.source.split('/')[-1][:4]}_to_{args.target.split('/')[-1][:4]}_{args.output_name}"
-	waveglow_inf.inference(utt_pred.T, name)
+
+	for i, speaker in enumerate(np.unique(speakers)):
+		utts = np.where(np.array(speakers) == speaker)
+
+		if not os.path.exists(f"{args.output_dir}/{speaker}"):
+			os.makedirs(f"{args.output_dir}/{speaker}")
+
+		for source in np.array(wav_fpaths)[utts]:
+
+			src_mel, trg_mel, trg_f0_norm = speechsplit_inf.read_audio(source, target)
+			# plot_data(src_mel,"source")
+			# plot_data(trg_mel,"target")
+			print(f"\nPreparing {source.name} to convert to {target.name}")
+			src_utt_pad, trg_utt_pad, trg_f0_onehot = speechsplit_inf.prep_data(src_mel, trg_mel, trg_f0_norm)
+			# plot_data(src_utt_pad.cpu().numpy(),"src padded")
+			# plot_data(trg_utt_pad.cpu().numpy(), "trg padded")
+			print(f"Running SpeechSplit")
+			utt_pred = speechsplit_inf.forward(src_utt_pad, trg_utt_pad, trg_f0_onehot)
+			# plot_data(utt_pred,"prediction")
+			# plot_data(mel)
+			print("Running Waveglow")
+			# name = f"{args.oneshot_model.split('/')[-1][-9:-5]}_sig_{args.sigma}_den_{args.denoiser_strength}_{args.output_name}"
+			# g = args.ss_g.split('/')[-1].split('.')[0]
+			# p = args.ss_p.split('/')[-1].split('.')[0]
+			# name = f"{g}_{p}_"
+			# name += f"{args.source.split('/')[-1][:4]}_to_{args.target.split('/')[-1][:4]}_{args.output_name}"
+			name = f"{speaker}/{source.stem}_{target.stem}"
+			waveglow_inf.inference(utt_pred.T, name)
