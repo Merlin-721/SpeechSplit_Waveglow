@@ -7,6 +7,15 @@ from show_mel import plot_data
 from SpeechSplit.inference import SpeechSplitInferencer
 from Waveglow.inference import WaveglowInferencer
 
+def files_from_path(path):
+	if os.path.isdir(path):
+		wav_fpaths = list(Path(path).glob('**/*.wav'))
+		speakers = list(map(lambda wav_fpath: wav_fpath.parent.stem, wav_fpaths))	
+	else:
+		wav_fpaths = [Path(path)]
+		speakers = [Path(path).stem]
+	return wav_fpaths, speakers
+
 if __name__ == '__main__':
 	parser = ArgumentParser()
 
@@ -31,16 +40,13 @@ if __name__ == '__main__':
 
 	args = parser.parse_args()
 
-	if os.path.isdir(args.target):
-		raise Exception("Target is a directory. Please provide a single wav file")
 
-	if os.path.isdir(args.source):
-		wav_fpaths = list(Path(args.source).glob('**/*.wav'))
-		speakers = list(map(lambda wav_fpath: wav_fpath.parent.stem, wav_fpaths))	
-	else:
-		wav_fpaths = [Path(args.source)]
-		speakers = [Path(args.source).stem]
-	target = Path(args.target)
+	wav_fpaths, speakers = files_from_path(args.source)
+	target, _ = files_from_path(args.target)
+	if len(target) != 1:
+		raise Exception("Target folder must contain 1 wav file")
+	target = target[0]
+
 
 	if not os.path.exists(target):
 		raise Exception(f"Target file {target} does not exist")
