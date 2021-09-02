@@ -286,7 +286,7 @@ class Solver(object):
                         x_f0 = torch.cat((x_real_pad, f0_org_val), dim=-1)
                         # G forward and loss calc
                         x_identic_val = self.G(x_f0, x_real_pad, emb)
-                        g_loss_val = F.mse_loss(x_identic_val,x_real_pad, reduction='mean')
+                        g_loss_val = F.mse_loss(x_identic_val, x_real_pad, reduction='mean')
                         G_loss_values.append(g_loss_val.item())
 
                         empty_mel = torch.full(x_real_pad.shape, -12.0, dtype=torch.float32).to(self.device)
@@ -328,5 +328,5 @@ class Solver(object):
         P_val_loss = np.mean(P_loss_values) if len(P_loss_values) > 0 else 0
         print(f'P Validation loss: {round(P_val_loss,3)}')
         if self.use_tensorboard:
-            self.writer.add_scalar('G Validation_loss', G_val_loss, step)
-            self.writer.add_scalar('P Validation_loss', P_val_loss, step)
+            self.writer.add_scalar('G Validation_loss', G_val_loss, step) if self.train_P else None
+            self.writer.add_scalar('P Validation_loss', P_val_loss, step) if self.train_P else None
