@@ -1,7 +1,7 @@
 from pathlib import Path
 import random
 
-ROOT_DIR = "/home/merlin/OneDrive/modules/individualProject/voiceChanger/Datasets/DS_10283_2119/VCTK-Corpus/wav16"
+ROOT_DIR = ""
 
 wavpaths = list(Path(ROOT_DIR).glob(f"**/*.wav"))
 print(len(wavpaths))
