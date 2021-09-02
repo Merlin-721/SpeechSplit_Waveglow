@@ -1,3 +1,18 @@
+# References
+The code contained in this work is an adaptation of:
+https://github.com/auspicious3000/SpeechSplit and
+https://github.com/NVIDIA/WaveGlow
+
+License details for each can be found in SpeechSplit/LICENSE and 
+Waveglow/LICENSE respectively. 
+
+Details of changes are outlined in the report:
+"Vocal Style-Transfer for Anti-Bias Interviews", Section 3.3
+
+Line-by-line changes are contained in the Differences directory.
+
+Merlin Lindsay, 2021
+
 ## To Run Conversion
 In terminal type:
 
