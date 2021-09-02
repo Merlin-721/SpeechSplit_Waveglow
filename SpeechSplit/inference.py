@@ -42,10 +42,15 @@ class SpeechSplitInferencer(object):
 			audio = torch.tensor(np.concatenate((audio, np.array([1e-06])), axis=0), dtype=torch.float32)
 		mel = self.MelProcessor.get_mel(audio).T.numpy()
 		return audio, mel, sr
+	
+	def gen_f0(self, audio, lo, hi, sr):
+		y = signal.filtfilt(self.b, self.a, audio)
+		wav = y * 0.96 + np.random.rand(y.shape[0])*1e-06
+		_, f0 = get_f0(wav, lo, hi, sr)
+		return f0
 
-	def read_audio(self, src_path, trg_path):
-		trg_path = Path(trg_path)
-		self.trg_spkr = trg_path.stem.split('_')[0]
+	def read_audio(self, src_path, trg):
+		self.trg_spkr = trg
 		if self.spk2gen[self.trg_spkr] == 'M':
 			lo, hi = 50, 250
 		elif self.spk2gen[self.trg_spkr] == 'F':
@@ -55,16 +60,14 @@ class SpeechSplitInferencer(object):
 		print(f"Found target speaker {self.trg_spkr}, loading features...")
 
 		# get src and trg mels
-		_        , src_mel, src_sr = self.gen_mel(src_path)
-		trg_audio, trg_mel, trg_sr = self.gen_mel(src_path)
-		assert src_sr == trg_sr
+		src_audio, src_mel, src_sr = self.gen_mel(src_path)
 
 		# get trg f0
-		y = signal.filtfilt(self.b, self.a, trg_audio)
-		wav = y * 0.96 + np.random.rand(y.shape[0])*1e-06
-		_, trg_f0_norm = get_f0(wav, lo, hi, trg_sr)
+		src_f0_norm = self.gen_f0(src_audio, lo, hi, src_sr)
 
-		return src_mel, trg_mel, trg_f0_norm
+		assert src_mel.shape[0] == src_f0_norm.shape[0]
+
+		return src_mel, src_f0_norm
 
 
 	def pad_utt(self, utterance, max_len=192):
@@ -72,34 +75,31 @@ class SpeechSplitInferencer(object):
 		utt_pad = torch.from_numpy(utt_pad).to(self.device)
 		return utt_pad
 
-	def prep_data(self, src_mel, trg_mel, trg_f0_norm):
-		max_len = self.config.max_len_pad
-		src_utt_pad = self.pad_utt(src_mel, max_len)
-		trg_utt_pad = self.pad_utt(trg_mel, max_len)
-
-		trg_f0_pad = pad_f0(trg_f0_norm.squeeze(), max_len)
+	def prep_data(self, src_mel, src_f0_norm, pad=True):
+		if pad:
+			max_len = self.config.max_len_pad
+			src_utt_pad = self.pad_utt(src_mel, max_len)
+			src_f0_pad = pad_f0(src_f0_norm.squeeze(), max_len)
+		else:
+			# max_len = src_mel.shape[0] // 64 * 64
+			max_len = src_mel.shape[0] // self.config.freq * self.config.freq
+			src_utt_pad = self.pad_utt(src_mel, max_len)
+			src_f0_pad = pad_f0(src_f0_norm.squeeze(), max_len)
+		src_f0_quant = quantize_f0_numpy(src_f0_pad)[0]
+		src_f0_onehot = src_f0_quant[np.newaxis,:,:]
+		src_f0_onehot = torch.from_numpy(src_f0_onehot).to(self.device)
 		
+		return src_utt_pad, src_f0_onehot
 
-		trg_f0_quant = quantize_f0_numpy(trg_f0_pad)[0]
-		trg_f0_onehot = trg_f0_quant[np.newaxis,:,:]
-		trg_f0_onehot = torch.from_numpy(trg_f0_onehot).to(self.device)
-		
-		return src_utt_pad, trg_utt_pad, trg_f0_onehot
-
-	def forward(self, src_utt, trg_utt, trg_f0):
+	def forward(self, src_utt, src_f0):
 		# src utt is padded
-		# trg f0 is onehot
+		# src f0 is onehot
 		emb = get_id(self.trg_spkr, self.spk2gen)
 		emb = torch.tensor(emb).unsqueeze(0).to(self.device)
-		# P forward
-		with torch.no_grad():
-			f0_pred = self.P(src_utt, trg_f0)[0]
-			f0_pred_quantized = f0_pred.argmax(dim=-1).squeeze(0)
-			f0_con_onehot = torch.zeros((1, self.config.max_len_pad, 257), device=self.device)
-			f0_con_onehot[0, torch.arange(self.config.max_len_pad), f0_pred_quantized] = 1
-		uttr_f0_trg = torch.cat((src_utt, f0_con_onehot), dim=-1)    
+
+		uttr_f0_org = torch.cat((src_utt, src_f0), dim=-1)    
 		# G forward
 		with torch.no_grad():
-			utt_pred = self.G(uttr_f0_trg, trg_utt, emb)
-			utt_pred = utt_pred[0,:uttr_f0_trg.shape[1],:].cpu().numpy()
+			utt_pred = self.G(uttr_f0_org, src_utt, emb)
+			utt_pred = utt_pred[0,:uttr_f0_org.shape[1],:].cpu().numpy()
 		return utt_pred
