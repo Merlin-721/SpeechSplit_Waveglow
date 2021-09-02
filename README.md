@@ -3,7 +3,7 @@ The code contained in this work is an adaptation of:
 https://github.com/auspicious3000/SpeechSplit and
 https://github.com/NVIDIA/WaveGlow
 
-License details for each can be found in SpeechSplit/LICENSE and 
+License details for each can be found in autovc/LICENSE and 
 Waveglow/LICENSE respectively. 
 
 Details of changes are outlined in the report:
@@ -11,8 +11,9 @@ Details of changes are outlined in the report:
 
 Line-by-line changes are contained in the Differences directory.
 
-Merlin Lindsay, 2021
-
+I verify that I am the sole author of the programmes contained in
+this archive, except where explicitly stated to the contrary.
+Merlin Lindsay, 02.09.2021
 ## To Run Conversion
 In terminal type:
 
