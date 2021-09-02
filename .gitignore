@@ -16,3 +16,8 @@ run/
 Waveglow/data
 SpeechSplit/done_already.txt
 SpeechSplit/main_grid.py
+Speed_Test.py
+run_eval_inf.sh
+Speed_Test_Figs/
+Speed_Test_Data/
+run_speed_test.sh
