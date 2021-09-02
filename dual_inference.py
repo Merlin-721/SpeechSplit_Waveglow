@@ -16,6 +16,52 @@ def files_from_path(path):
 		speakers = [Path(path).stem]
 	return wav_fpaths, speakers
 
+def run_conversion(args):
+
+	wav_fpaths, speakers = files_from_path(args.source)
+	target = args.target
+
+	if not os.path.exists(args.output_dir):
+		os.makedirs(args.output_dir)
+	
+
+	with open(args.waveglow_conf) as f:
+		print(f"Obtaining waveglow config from {args.waveglow_conf}")
+		waveglow_conf = json.load(f)['data_config']
+
+	speechsplit_inf = SpeechSplitInferencer(args, waveglow_conf)
+	waveglow_inf = WaveglowInferencer(args)
+
+	print(f"Reading audio from:\n{args.source}")
+
+	for i, speaker in enumerate(np.unique(speakers)):
+		utts = np.where(np.array(speakers) == speaker)
+
+		if not os.path.exists(f"{args.output_dir}/{speaker}"):
+			os.makedirs(f"{args.output_dir}/{speaker}")
+
+		for source in np.array(wav_fpaths)[utts]:
+			src_mel, src_f0_norm = speechsplit_inf.read_audio(source, target)
+			# plot_data(src_mel,"source")
+			# plot_data(trg_mel,"target")
+			print(f"\nPreparing {source.name} to convert to {target}")
+			src_utt_pad, src_f0_onehot = speechsplit_inf.prep_data(src_mel, src_f0_norm)
+			# plot_data(src_utt_pad.cpu().numpy(),"src padded")
+			# plot_data(trg_utt_pad.cpu().numpy(), "trg padded")
+			print(f"Running SpeechSplit")
+			utt_pred = speechsplit_inf.forward(src_utt_pad, src_f0_onehot)
+			# plot_data(utt_pred,"prediction")
+			# plot_data(mel)
+			print("Running Waveglow")
+			# name = f"{args.oneshot_model.split('/')[-1][-9:-5]}_sig_{args.sigma}_den_{args.denoiser_strength}_{args.output_name}"
+			# g = args.ss_g.split('/')[-1].split('.')[0]
+			# p = args.ss_p.split('/')[-1].split('.')[0]
+			# name = f"{g}_{p}_"
+			# name += f"{args.source.split('/')[-1][:4]}_to_{args.target.split('/')[-1][:4]}_{args.output_name}"
+			out_path = Path(args.output_dir,speaker,source.stem+"_"+target+".wav")
+			waveglow_inf.inference(utt_pred.T, out_path)
+
+
 if __name__ == '__main__':
 	parser = ArgumentParser()
 
@@ -40,54 +86,4 @@ if __name__ == '__main__':
 
 	args = parser.parse_args()
 
-
-	wav_fpaths, speakers = files_from_path(args.source)
-	target, _ = files_from_path(args.target)
-	if len(target) != 1:
-		raise Exception("Target folder must contain 1 wav file")
-	target = target[0]
-
-
-	if not os.path.exists(target):
-		raise Exception(f"Target file {target} does not exist")
-
-	if not os.path.exists(args.output_dir):
-		os.makedirs(args.output_dir)
-	
-
-	with open(args.waveglow_conf) as f:
-		print(f"Obtaining waveglow config from {args.waveglow_conf}")
-		waveglow_conf = json.load(f)['data_config']
-
-	speechsplit_inf = SpeechSplitInferencer(args, waveglow_conf)
-	waveglow_inf = WaveglowInferencer(args)
-
-	print(f"Reading audio from:\n{args.source} and \n{args.target}")
-
-	for i, speaker in enumerate(np.unique(speakers)):
-		utts = np.where(np.array(speakers) == speaker)
-
-		if not os.path.exists(f"{args.output_dir}/{speaker}"):
-			os.makedirs(f"{args.output_dir}/{speaker}")
-
-		for source in np.array(wav_fpaths)[utts]:
-
-			src_mel, trg_mel, trg_f0_norm = speechsplit_inf.read_audio(source, target)
-			# plot_data(src_mel,"source")
-			# plot_data(trg_mel,"target")
-			print(f"\nPreparing {source.name} to convert to {target.name}")
-			src_utt_pad, trg_utt_pad, trg_f0_onehot = speechsplit_inf.prep_data(src_mel, trg_mel, trg_f0_norm)
-			# plot_data(src_utt_pad.cpu().numpy(),"src padded")
-			# plot_data(trg_utt_pad.cpu().numpy(), "trg padded")
-			print(f"Running SpeechSplit")
-			utt_pred = speechsplit_inf.forward(src_utt_pad, trg_utt_pad, trg_f0_onehot)
-			# plot_data(utt_pred,"prediction")
-			# plot_data(mel)
-			print("Running Waveglow")
-			# name = f"{args.oneshot_model.split('/')[-1][-9:-5]}_sig_{args.sigma}_den_{args.denoiser_strength}_{args.output_name}"
-			# g = args.ss_g.split('/')[-1].split('.')[0]
-			# p = args.ss_p.split('/')[-1].split('.')[0]
-			# name = f"{g}_{p}_"
-			# name += f"{args.source.split('/')[-1][:4]}_to_{args.target.split('/')[-1][:4]}_{args.output_name}"
-			name = f"{speaker}/{source.stem}_{target.stem}"
-			waveglow_inf.inference(utt_pred.T, name)
+	run_conversion(args)
