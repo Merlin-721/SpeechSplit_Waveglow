@@ -76,12 +76,6 @@ def quantize_f0_torch(x, num_bins=256):
 
 
 
-def get_mask_from_lengths(lengths, max_len):
-    ids = torch.arange(0, max_len, device=lengths.device)
-    mask = (ids >= lengths.unsqueeze(1)).bool()
-    return mask
-    
-    
 
 def pad_seq_to_2(x, len_out=128):
     length = x.shape[1]
