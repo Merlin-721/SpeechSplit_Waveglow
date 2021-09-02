@@ -42,22 +42,11 @@ def run_conversion(args):
 
 		for source in np.array(wav_fpaths)[utts]:
 			src_mel, src_f0_norm = speechsplit_inf.read_audio(source, target)
-			# plot_data(src_mel,"source")
-			# plot_data(trg_mel,"target")
 			print(f"\nPreparing {source.name} to convert to {target}")
 			src_utt_pad, src_f0_onehot = speechsplit_inf.prep_data(src_mel, src_f0_norm)
-			# plot_data(src_utt_pad.cpu().numpy(),"src padded")
-			# plot_data(trg_utt_pad.cpu().numpy(), "trg padded")
 			print(f"Running SpeechSplit")
 			utt_pred = speechsplit_inf.forward(src_utt_pad, src_f0_onehot)
-			# plot_data(utt_pred,"prediction")
-			# plot_data(mel)
 			print("Running Waveglow")
-			# name = f"{args.oneshot_model.split('/')[-1][-9:-5]}_sig_{args.sigma}_den_{args.denoiser_strength}_{args.output_name}"
-			# g = args.ss_g.split('/')[-1].split('.')[0]
-			# p = args.ss_p.split('/')[-1].split('.')[0]
-			# name = f"{g}_{p}_"
-			# name += f"{args.source.split('/')[-1][:4]}_to_{args.target.split('/')[-1][:4]}_{args.output_name}"
 			out_path = Path(args.output_dir,speaker,source.stem+"_"+target+".wav")
 			waveglow_inf.inference(utt_pred.T, out_path)
 
@@ -68,12 +57,10 @@ if __name__ == '__main__':
 	parser.add_argument('-source', '-s', help='source wav path')
 	parser.add_argument('-target', '-t', help='target wav path')
 	parser.add_argument('-output_dir', '-o', help='output dir path')
-	parser.add_argument('-output_name', help='name of output file')
 
 	# SpeechSplit
 	parser.add_argument('-speech_split_conf', help='SpeechSplit config file path')
 	parser.add_argument('-ss_g', help='SpeechSplit G model path')
-	parser.add_argument('-ss_p', help='SpeechSplit P model path')
 	parser.add_argument('-sample_rate', '-sr', help='sample rate', default=22050, type=int)
 
 	# Waveglow
